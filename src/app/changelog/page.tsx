@@ -7,6 +7,23 @@ import { Badge } from '@/components/ui/badge';
 
 const changelog = [
   {
+    version: '1.0.2',
+    date: '2025-08-28',
+    sections: {
+      Added: [
+        'Comprehensive legal pages: `Terms of Service`, `Privacy Policy`, `DMCA Policy`, `Cookie Policy`, `Disclaimer`, and `UGC Disclaimer`.',
+        'New `legal-page.tsx` component to provide a consistent layout for all legal documents.',
+        'Added `@tailwindcss/typography` plugin for improved content formatting on legal pages.',
+      ],
+      Changed: [
+        'Updated the footer to include a dedicated section with links to all legal pages.',
+        'Updated project documentation (`README.md`, `CHANGELOG.md`) to reflect the latest changes and dependencies.',
+        'Incremented the version number in the footer and documentation to `v1.0.2`.',
+      ],
+      Removed: [],
+    },
+  },
+  {
     version: '1.0.1',
     date: '2025-08-28',
     sections: {
