@@ -8,6 +8,7 @@ import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
 import {
   Copy,
+  Download,
   ZoomIn,
   ZoomOut,
   Trash2,
@@ -259,19 +260,19 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     const canvas = canvasRef.current!;
 
     // The portion of the original image to draw
-    const sourceX = Math.max(0, -x) / width * img.width;
-    const sourceY = Math.max(0, -y) / height * img.height;
-    const sourceWidth = Math.min(canvas.width, canvas.width - x, width) / width * img.width;
-    const sourceHeight = Math.min(canvas.height, canvas.height - y, height) / height * img.height;
+    const sourceX = (canvas.width / 2 - x - width / 2) / width * img.width;
+    const sourceY = (canvas.height / 2 - y - height / 2) / height * img.height;
+    const sourceWidth = img.width;
+    const sourceHeight = img.height;
     
     // Where on the temp canvas to draw the image
-    const destX = Math.max(0, x);
-    const destY = Math.max(0, y);
-    const destWidth = sourceWidth * (width / img.width);
-    const destHeight = sourceHeight * (height / img.height);
+    const destX = 0;
+    const destY = 0;
+    const destWidth = img.width;
+    const destHeight = img.height;
     
-    tempCanvas.width = canvas.width;
-    tempCanvas.height = canvas.height;
+    tempCanvas.width = destWidth;
+    tempCanvas.height = destHeight;
 
     const ctx = tempCanvas.getContext('2d')!;
     ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight);
@@ -279,13 +280,18 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     // Now, create a final canvas with the exact cropped dimensions
     const finalCanvas = document.createElement('canvas');
     const finalCtx = finalCanvas.getContext('2d')!;
-    finalCanvas.width = destWidth;
-    finalCanvas.height = destHeight;
-    finalCtx.drawImage(tempCanvas, destX, destY, destWidth, destHeight, 0, 0, destWidth, destHeight);
 
+    const cropX = Math.max(0, x);
+    const cropY = Math.max(0, y);
+    const cropWidth = Math.min(canvas.width, width) - Math.max(0, x) + Math.min(0, x);
+    const cropHeight = Math.min(canvas.height, height) - Math.max(0, y) + Math.min(0, y);
+
+    finalCanvas.width = cropWidth;
+    finalCanvas.height = cropHeight;
+    finalCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+    
     return finalCanvas.toDataURL('image/png');
   };
-
 
   const handleCopy = async () => {
     const dataUrl = getCroppedDataUrl();
@@ -305,6 +311,23 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
         variant: 'destructive',
       });
     }
+  };
+
+  const handleDownload = () => {
+    const dataUrl = getCroppedDataUrl();
+    if (!dataUrl) return;
+
+    const link = document.createElement('a');
+    link.download = 'cropped-image.png';
+    link.href = dataUrl;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    
+    toast({
+      title: 'Success!',
+      description: 'Image download started.',
+    });
   };
 
   return (
@@ -330,6 +353,15 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Copy to Clipboard</TooltipContent>
+              </Tooltip>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button variant="ghost" size="icon" onClick={handleDownload}>
+                    <Download className="w-5 h-5" />
+                    <span className="sr-only">Download Image</span>
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Download Image</TooltipContent>
               </Tooltip>
             </div>
             <div className="flex items-center gap-2 w-full max-w-xs">
