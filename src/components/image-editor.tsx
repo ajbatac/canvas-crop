@@ -254,22 +254,38 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     const tempCanvas = document.createElement('canvas');
     const img = imageRef.current;
     if (!img.src) return null;
-    
+
     const { x, y, width, height } = imageRect;
     const canvas = canvasRef.current!;
 
-    const sourceX = (0 - x) / width * img.width;
-    const sourceY = (0 - y) / height * img.height;
-    const sourceWidth = canvas.width / width * img.width;
-    const sourceHeight = canvas.height / height * img.height;
+    // The portion of the original image to draw
+    const sourceX = Math.max(0, -x) / width * img.width;
+    const sourceY = Math.max(0, -y) / height * img.height;
+    const sourceWidth = Math.min(canvas.width, canvas.width - x, width) / width * img.width;
+    const sourceHeight = Math.min(canvas.height, canvas.height - y, height) / height * img.height;
+    
+    // Where on the temp canvas to draw the image
+    const destX = Math.max(0, x);
+    const destY = Math.max(0, y);
+    const destWidth = sourceWidth * (width / img.width);
+    const destHeight = sourceHeight * (height / img.height);
     
     tempCanvas.width = canvas.width;
     tempCanvas.height = canvas.height;
 
     const ctx = tempCanvas.getContext('2d')!;
-    ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, 0, 0, canvas.width, canvas.height);
-    return tempCanvas.toDataURL('image/png');
+    ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight);
+
+    // Now, create a final canvas with the exact cropped dimensions
+    const finalCanvas = document.createElement('canvas');
+    const finalCtx = finalCanvas.getContext('2d')!;
+    finalCanvas.width = destWidth;
+    finalCanvas.height = destHeight;
+    finalCtx.drawImage(tempCanvas, destX, destY, destWidth, destHeight, 0, 0, destWidth, destHeight);
+
+    return finalCanvas.toDataURL('image/png');
   };
+
 
   const handleCopy = async () => {
     const dataUrl = getCroppedDataUrl();
