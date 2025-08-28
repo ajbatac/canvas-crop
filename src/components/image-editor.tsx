@@ -182,44 +182,43 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     setCursor(newCursor);
   };
 
-  const handleMouseMove = (e: MouseEvent) => {
+  const handleMouseMove = useCallback((e: MouseEvent) => {
     const pos = getMousePos(e);
     const deltaX = pos.x - lastMousePos.x;
     const deltaY = pos.y - lastMousePos.y;
 
     if (activeHandle) {
-      let { x, y, width, height } = imageRect;
-      const aspectRatio = imageRef.current.width / imageRef.current.height;
+      setImageRect(currentRect => {
+        let { x, y, width, height } = currentRect;
+        const aspectRatio = imageRef.current.width / imageRef.current.height;
+        
+        let newWidth = width;
+        let deltaWidth = 0;
 
-      switch (activeHandle) {
-        case 'bottomRight':
-          width = Math.max(MIN_DIMENSION, width + deltaX);
-          height = width / aspectRatio;
-          break;
-        case 'bottomLeft':
-          width = Math.max(MIN_DIMENSION, width - deltaX);
-          height = width / aspectRatio;
-          x += deltaX;
-          break;
-        case 'topLeft':
-          width = Math.max(MIN_DIMENSION, width - deltaX);
-          height = width / aspectRatio;
-          x += deltaX;
-          y += deltaY;
-          break;
-        case 'topRight':
-          width = Math.max(MIN_DIMENSION, width + deltaX);
-          height = width / aspectRatio;
-          y += deltaY;
-          break;
-      }
-      setImageRect({ x, y, width, height });
+        if (activeHandle.includes('Right')) {
+          deltaWidth = deltaX;
+        } else if (activeHandle.includes('Left')) {
+          deltaWidth = -deltaX;
+        }
+        
+        newWidth = Math.max(MIN_DIMENSION, width + deltaWidth);
+        const newHeight = newWidth / aspectRatio;
+
+        if (activeHandle.includes('Left')) {
+          x -= newWidth - width;
+        }
+        if (activeHandle.includes('Top')) {
+          y -= newHeight - height;
+        }
+        
+        return { x, y, width: newWidth, height: newHeight };
+      });
     } else if (isPanning) {
       setImageRect(r => ({ ...r, x: r.x + deltaX, y: r.y + deltaY }));
     }
 
     setLastMousePos(pos);
-  };
+  }, [activeHandle, isPanning, lastMousePos]);
 
   const handleMouseUp = () => {
     setActiveHandle(null);
@@ -233,8 +232,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
       window.removeEventListener('mousemove', handleMouseMove);
       window.removeEventListener('mouseup', handleMouseUp);
     };
-     // eslint-disable-next-line react-hooks/exhaustive-deps
-  }, [activeHandle, isPanning, lastMousePos]);
+  }, [handleMouseMove]);
 
 
   const handleZoom = (newZoom: number) => {
