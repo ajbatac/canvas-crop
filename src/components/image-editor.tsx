@@ -418,7 +418,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                 max={5}
                 step={0.1}
                 value={[zoom]}
-                onValueValueChange={([val]) => handleZoom(val)}
+                onValueChange={([val]) => handleZoom(val)}
               />
               <ZoomIn className="w-5 h-5 text-muted-foreground" />
             </div>
