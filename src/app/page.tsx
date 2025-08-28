@@ -61,7 +61,7 @@ export default function Home() {
                   <FeatureCard
                     icon={Crop}
                     title="Crop Your Picture"
-                    description="Cut out any parts of the image you don't want. What you see is what you get."
+                    description="The canvas is your frame. What you see is what you get, so anything outside the box is automatically cropped."
                   />
                   <FeatureCard
                     icon={ZoomIn}
