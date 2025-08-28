@@ -2,8 +2,6 @@
 
 Canvas Crop is a straightforward, client-side web application for resizing and cropping images. Built with Next.js, React, and TypeScript, it offers a clean, intuitive interface for all your basic image manipulation needs. Drag, drop, resize, and crop with ease, then copy to your clipboard or download the final image.
 
-![Canvas Crop Screenshot](https://storage.googleapis.com/stedi-assets/studio-canvas-crop.png)
-
 ## Features
 
 -   **Drag and Drop**: Easily upload images by dragging them onto the application.
@@ -103,9 +101,10 @@ The project follows a standard Next.js App Router structure. Here is an overview
 ```
 .
 ├── public/                 # Static assets (images, fonts, etc.)
-│   └── changelog.html      # HTML version of the changelog
 ├── src/
 │   ├── app/                # Application routes and pages
+│   │   ├── changelog/      # Changelog page
+│   │   │   └── page.tsx
 │   │   ├── globals.css     # Global styles
 │   │   ├── layout.tsx      # Root layout component
 │   │   └── page.tsx        # Main application page component
@@ -150,4 +149,4 @@ The project follows a standard Next.js App Router structure. Here is an overview
 
 ---
 
-Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.0.0 (<a href="/public/changelog.html" target="_top">changelog</a>)
+Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.0.0 (<a href="/changelog" target="_top">changelog</a>)
