@@ -92,7 +92,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     });
   }, [imageRect, getHandles]);
 
-  const loadImage = useCallback((src: string) => {
+  const loadImage = (src: string) => {
     const img = imageRef.current;
     const canvas = canvasRef.current;
     const container = containerRef.current;
@@ -127,13 +127,13 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
       setZoom(1);
     };
     img.src = src;
-  }, []);
+  };
 
   useEffect(() => {
     const reader = new FileReader();
     reader.onload = (e) => loadImage(e.target?.result as string);
     reader.readAsDataURL(imageFile);
-  }, [imageFile, loadImage]);
+  }, [imageFile]);
 
   useEffect(() => {
     const canvas = canvasRef.current;
