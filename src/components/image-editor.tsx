@@ -38,6 +38,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+  const [cursor, setCursor] = useState('grab');
 
   const getHandles = useCallback(() => {
     const { x, y, width, height } = imageRect;
@@ -151,6 +152,34 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
         pos.y >= imageRect.y && pos.y <= imageRect.y + imageRect.height) {
         setIsPanning(true);
     }
+  };
+
+  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
+    if (activeHandle || isPanning) return;
+    
+    const pos = getMousePos(e);
+    const handles = getHandles();
+    let newCursor = 'grab';
+
+    const handleHotspot = HANDLE_SIZE;
+
+    const onTopLeft = Math.abs(pos.x - handles.topLeft.x) < handleHotspot && Math.abs(pos.y - handles.topLeft.y) < handleHotspot;
+    const onBottomRight = Math.abs(pos.x - handles.bottomRight.x) < handleHotspot && Math.abs(pos.y - handles.bottomRight.y) < handleHotspot;
+    const onTopRight = Math.abs(pos.x - handles.topRight.x) < handleHotspot && Math.abs(pos.y - handles.topRight.y) < handleHotspot;
+    const onBottomLeft = Math.abs(pos.x - handles.bottomLeft.x) < handleHotspot && Math.abs(pos.y - handles.bottomLeft.y) < handleHotspot;
+
+    if (onTopLeft || onBottomRight) {
+      newCursor = 'nwse-resize';
+    } else if (onTopRight || onBottomLeft) {
+      newCursor = 'nesw-resize';
+    } else if (
+      pos.x >= imageRect.x && pos.x <= imageRect.x + imageRect.width &&
+      pos.y >= imageRect.y && pos.y <= imageRect.y + imageRect.height
+    ) {
+      newCursor = 'move';
+    }
+
+    setCursor(newCursor);
   };
 
   const handleMouseMove = (e: MouseEvent) => {
@@ -306,8 +335,10 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
       <Card className="flex-grow w-full h-full overflow-hidden" ref={containerRef}>
         <canvas
           ref={canvasRef}
-          className="w-full h-full cursor-grab active:cursor-grabbing"
+          className="w-full h-full"
+          style={{ cursor: isPanning ? 'grabbing' : cursor }}
           onMouseDown={handleMouseDown}
+          onMouseMove={handleCanvasMouseMove}
         />
       </Card>
     </div>
