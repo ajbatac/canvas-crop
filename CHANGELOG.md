@@ -5,6 +5,18 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.2] - 2025-08-28
+
+### Added
+- Comprehensive legal pages: `Terms of Service`, `Privacy Policy`, `DMCA Policy`, `Cookie Policy`, `Disclaimer`, and `UGC Disclaimer`.
+- New `legal-page.tsx` component to provide a consistent layout for all legal documents.
+- Added `@tailwindcss/typography` plugin for improved content formatting on legal pages.
+
+### Changed
+- Updated the footer to include a dedicated section with links to all legal pages.
+- Updated project documentation (`README.md`, `CHANGELOG.md`) to reflect the latest changes and dependencies.
+- Incremented the version number in the footer and documentation to `v1.0.2`.
+
 ## [1.0.1] - 2025-08-28
 
 ### Added

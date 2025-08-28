@@ -105,6 +105,9 @@ The project follows a standard Next.js App Router structure. Here is an overview
 │   ├── app/                # Application routes and pages
 │   │   ├── changelog/      # Changelog page
 │   │   │   └── page.tsx
+│   │   ├── legal/          # Static legal pages (TOS, Privacy, etc.)
+│   │   │   ├── ...
+│   │   │   └── page.tsx
 │   │   ├── globals.css     # Global styles
 │   │   ├── layout.tsx      # Root layout component
 │   │   └── page.tsx        # Main application page component
@@ -112,6 +115,7 @@ The project follows a standard Next.js App Router structure. Here is an overview
 │   │   ├── ui/             # ShadCN UI components
 │   │   ├── file-uploader.tsx # Component for uploading files
 │   │   ├── image-editor.tsx  # Core image editing component
+│   │   ├── legal-page.tsx  # Layout for legal pages
 │   │   └── footerCopyright.tsx # Footer component with author credit
 │   ├── hooks/              # Custom React hooks
 │   │   └── use-toast.ts    # Hook for displaying toast notifications
@@ -135,6 +139,7 @@ The project follows a standard Next.js App Router structure. Here is an overview
 -   **react-dom**: `^18.3.1` - Serves as the entry point to the DOM and server renderers for React.
 -   **typescript**: `^5` - A typed superset of JavaScript that compiles to plain JavaScript.
 -   **tailwindcss**: `^3.4.1` - A utility-first CSS framework for rapid UI development.
+-   **@tailwindcss/typography**: `^0.5.13` - A plugin that provides a set of `prose` classes for beautiful typographic defaults.
 -   **shadcn/ui**: Various - A collection of re-usable components built using Radix UI and Tailwind CSS.
 -   **lucide-react**: `^0.475.0` - A library of simply beautiful and consistent icons.
 -   **clsx**: `^2.1.1` - A tiny utility for constructing `className` strings conditionally.
@@ -149,4 +154,4 @@ The project follows a standard Next.js App Router structure. Here is an overview
 
 ---
 
-Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.0.1 (<a href="/changelog" target="_top">changelog</a>)
+Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.0.2 (<a href="/changelog">changelog</a>)
