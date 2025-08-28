@@ -3,8 +3,24 @@
 import { useState } from 'react';
 import { FileUploader } from '@/components/file-uploader';
 import { ImageEditor } from '@/components/image-editor';
-import { Crop } from 'lucide-react';
+import { Crop, Scale, ZoomIn, Download, Copy } from 'lucide-react';
 import { FooterCopyright } from '@/components/footerCopyright';
+import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+
+const FeatureCard = ({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) => (
+  <Card className="text-left">
+    <CardHeader className="flex flex-row items-center gap-4 pb-2">
+      <div className="bg-primary/10 p-2 rounded-lg">
+        <Icon className="w-6 h-6 text-primary" />
+      </div>
+      <CardTitle className="text-lg">{title}</CardTitle>
+    </CardHeader>
+    <CardContent>
+      <p className="text-muted-foreground">{description}</p>
+    </CardContent>
+  </Card>
+);
+
 
 export default function Home() {
   const [imageFile, setImageFile] = useState<File | null>(null);
@@ -33,6 +49,33 @@ export default function Home() {
                 A simple tool to resize and crop your images. Drag and drop a file to get started.
               </p>
               <FileUploader onFileSelect={handleFileSelect} />
+
+              <div className="max-w-4xl mx-auto mt-12 w-full">
+                <h2 className="text-2xl font-bold text-center mb-6">What can you do with this tool?</h2>
+                <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                  <FeatureCard
+                    icon={Scale}
+                    title="Resize Your Image"
+                    description="Easily make your image larger or smaller. Just drag the corners to get the perfect size."
+                  />
+                  <FeatureCard
+                    icon={Crop}
+                    title="Crop Your Picture"
+                    description="Cut out any parts of the image you don't want. What you see is what you get."
+                  />
+                  <FeatureCard
+                    icon={ZoomIn}
+                    title="Zoom and Pan"
+                    description="Get a closer look by zooming in, and move the image around to focus on the exact spot you need."
+                  />
+                  <FeatureCard
+                    icon={Download}
+                    title="Download or Copy"
+                    description="Save the finished image to your computer or copy it straight to your clipboard with a single click."
+                  />
+                </div>
+              </div>
+
             </div>
           ) : (
             <ImageEditor imageFile={imageFile} onNewImage={handleNewImage} />
