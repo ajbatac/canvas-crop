@@ -18,7 +18,6 @@ export function FooterCopyright() {
         - v1.0.1 (
         <a
           href="/changelog"
-          target="_top"
           className="font-medium text-primary underline-offset-4 hover:underline"
         >
           changelog
