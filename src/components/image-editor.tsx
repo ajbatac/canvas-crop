@@ -20,7 +20,7 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 
-const HANDLE_SIZE = 12;
+const HANDLE_SIZE = 16; // Increased for better touch interaction
 const MIN_DIMENSION = 50;
 
 interface ImageEditorProps {
@@ -38,7 +38,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   const [imageRect, setImageRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
-  const [lastMousePos, setLastMousePos] = useState({ x: 0, y: 0 });
+  const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
   const [cursor, setCursor] = useState('grab');
 
   const getHandles = useCallback(() => {
@@ -99,20 +99,29 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
 
     img.onload = () => {
       if (!container || !canvas) return;
-      const containerAR = container.clientWidth / container.clientHeight;
+
+      // Ensure canvas is sized before calculations
+      const containerWidth = container.clientWidth;
+      const containerHeight = container.clientHeight;
+      if (containerWidth === 0 || containerHeight === 0) return;
+      
+      canvas.width = containerWidth;
+      canvas.height = containerHeight;
+
+      const containerAR = containerWidth / containerHeight;
       const imgAR = img.width / img.height;
       
       let newWidth, newHeight;
       if (imgAR > containerAR) {
-        newWidth = container.clientWidth * 0.8;
+        newWidth = containerWidth * 0.8;
         newHeight = newWidth / imgAR;
       } else {
-        newHeight = container.clientHeight * 0.8;
+        newHeight = containerHeight * 0.8;
         newWidth = newHeight * imgAR;
       }
 
-      const newX = (container.clientWidth - newWidth) / 2;
-      const newY = (container.clientHeight - newHeight) / 2;
+      const newX = (containerWidth - newWidth) / 2;
+      const newY = (containerHeight - newHeight) / 2;
 
       setImageRect({ x: newX, y: newY, width: newWidth, height: newHeight });
       setZoom(1);
@@ -132,29 +141,52 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     if (!canvas || !container) return;
 
     const resizeObserver = new ResizeObserver(() => {
+      const currentImageAR = imageRect.width / imageRect.height;
+      if (!container.clientWidth || !container.clientHeight || !imageRect.width) return;
+      
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
-      redrawCanvas();
+      
+      setImageRect(prev => {
+        const containerAR = container.clientWidth / container.clientHeight;
+        let newWidth, newHeight;
+        
+        if (currentImageAR > containerAR) {
+            newWidth = container.clientWidth * 0.8;
+            newHeight = newWidth / currentImageAR;
+        } else {
+            newHeight = container.clientHeight * 0.8;
+            newWidth = newHeight * currentImageAR;
+        }
+
+        const newX = (container.clientWidth - newWidth) / 2;
+        const newY = (container.clientHeight - newHeight) / 2;
+
+        return { x: newX, y: newY, width: newWidth, height: newHeight };
+      });
     });
     resizeObserver.observe(container);
 
     return () => resizeObserver.disconnect();
-  }, [redrawCanvas]);
+  }, [redrawCanvas, imageRect.width, imageRect.height]);
+
 
   useEffect(() => {
     redrawCanvas();
   }, [imageRect, redrawCanvas]);
 
-  const getMousePos = (e: MouseEvent | React.MouseEvent) => {
+  const getEventPos = (e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) => {
     const canvas = canvasRef.current;
     if (!canvas) return { x: 0, y: 0 };
     const rect = canvas.getBoundingClientRect();
-    return { x: e.clientX - rect.left, y: e.clientY - rect.top };
+    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
+    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
+    return { x: clientX - rect.left, y: clientY - rect.top };
   };
 
-  const handleMouseDown = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    const pos = getMousePos(e);
-    setLastMousePos(pos);
+  const handleInteractionStart = (e: React.MouseEvent | React.TouchEvent) => {
+    const pos = getEventPos(e);
+    setLastPos(pos);
 
     for (const [name, handlePos] of Object.entries(getHandles())) {
       if (
@@ -172,12 +204,13 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     }
   };
 
+
   const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
     if (activeHandle || isPanning) return;
     
-    const pos = getMousePos(e);
+    const pos = getEventPos(e);
     const handles = getHandles();
-    let newCursor = 'default'; // Changed from 'grab'
+    let newCursor = 'default';
 
     const handleHotspot = HANDLE_SIZE;
 
@@ -200,10 +233,13 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     setCursor(newCursor);
   };
 
-  const handleMouseMove = useCallback((e: MouseEvent) => {
-    const pos = getMousePos(e);
-    const deltaX = pos.x - lastMousePos.x;
-    const deltaY = pos.y - lastMousePos.y;
+  const handleInteractionMove = useCallback((e: MouseEvent | TouchEvent) => {
+    if (!activeHandle && !isPanning) return;
+    e.preventDefault();
+
+    const pos = getEventPos(e);
+    const deltaX = pos.x - lastPos.x;
+    const deltaY = pos.y - lastPos.y;
 
     if (activeHandle) {
       setImageRect(currentRect => {
@@ -244,22 +280,35 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
       setImageRect(r => ({ ...r, x: r.x + deltaX, y: r.y + deltaY }));
     }
 
-    setLastMousePos(pos);
-  }, [activeHandle, isPanning, lastMousePos]);
+    setLastPos(pos);
+  }, [activeHandle, isPanning, lastPos]);
 
-  const handleMouseUp = () => {
+  const handleInteractionEnd = () => {
     setActiveHandle(null);
     setIsPanning(false);
   };
   
   useEffect(() => {
-    window.addEventListener('mousemove', handleMouseMove);
-    window.addEventListener('mouseup', handleMouseUp);
+    const canvas = canvasRef.current;
+    if (!canvas) return;
+
+    // Mouse events
+    window.addEventListener('mousemove', handleInteractionMove);
+    window.addEventListener('mouseup', handleInteractionEnd);
+    
+    // Touch events
+    canvas.addEventListener('touchmove', handleInteractionMove, { passive: false });
+    window.addEventListener('touchend', handleInteractionEnd);
+    
     return () => {
-      window.removeEventListener('mousemove', handleMouseMove);
-      window.removeEventListener('mouseup', handleMouseUp);
+      window.removeEventListener('mousemove', handleInteractionMove);
+      window.removeEventListener('mouseup', handleInteractionEnd);
+      if (canvas) {
+        canvas.removeEventListener('touchmove', handleInteractionMove);
+      }
+      window.removeEventListener('touchend', handleInteractionEnd);
     };
-  }, [handleMouseMove]);
+  }, [handleInteractionMove]);
 
 
   const handleZoom = (newZoom: number) => {
@@ -286,8 +335,6 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     finalCanvas.height = imageRect.height;
     const finalCtx = finalCanvas.getContext('2d')!;
 
-    // Draw the original image onto the final canvas at the final size
-    // This performs the resizing.
     finalCtx.drawImage(img, 0, 0, imageRect.width, imageRect.height);
     
     return finalCanvas.toDataURL('image/png');
@@ -333,7 +380,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   return (
     <div className="w-full h-[calc(100vh-8rem)] flex flex-col gap-4">
       <Card className="flex-shrink-0">
-        <div className="p-2 flex items-center justify-between gap-4">
+        <div className="p-2 flex flex-wrap items-center justify-between gap-4">
           <TooltipProvider>
             <div className="flex items-center gap-2">
               <Tooltip>
@@ -371,11 +418,11 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                 max={5}
                 step={0.1}
                 value={[zoom]}
-                onValueChange={([val]) => handleZoom(val)}
+                onValueValueChange={([val]) => handleZoom(val)}
               />
               <ZoomIn className="w-5 h-5 text-muted-foreground" />
             </div>
-             <div className="text-sm text-muted-foreground w-32 text-center">
+             <div className="text-sm text-muted-foreground w-32 text-center shrink-0">
               {Math.round(imageRect.width)} x {Math.round(imageRect.height)}
             </div>
           </TooltipProvider>
@@ -385,8 +432,9 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
         <canvas
           ref={canvasRef}
           className="w-full h-full"
-          style={{ cursor: isPanning ? 'grabbing' : cursor }}
-          onMouseDown={handleMouseDown}
+          style={{ cursor: isPanning ? 'grabbing' : cursor, touchAction: 'none' }}
+          onMouseDown={handleInteractionStart}
+          onTouchStart={handleInteractionStart}
           onMouseMove={handleCanvasMouseMove}
         />
       </Card>
