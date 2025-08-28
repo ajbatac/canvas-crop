@@ -147,13 +147,17 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   
       setImageRect(prevRect => {
         if (prevRect.width === 0 || prevRect.height === 0) {
+          // If we don't have an image yet, don't try to calculate new dimensions.
+          // This can happen on initial load.
           return prevRect;
         }
   
+        // Calculate new dimensions based on the new container size, maintaining aspect ratio.
         const currentImageAR = prevRect.width / prevRect.height;
         const containerAR = container.clientWidth / container.clientHeight;
         let newWidth, newHeight;
   
+        // Fit the image within an 80% bounding box of the container.
         if (currentImageAR > containerAR) {
           newWidth = container.clientWidth * 0.8;
           newHeight = newWidth / currentImageAR;
@@ -169,13 +173,15 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
       });
     };
   
+    // Use ResizeObserver to detect when the container size changes.
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(container);
   
+    // Initial resize call to set up the canvas and image correctly.
     handleResize();
   
     return () => resizeObserver.disconnect();
-  }, [imageFile]);
+  }, [imageFile]); // Rerun this effect if the image file changes.
 
 
   useEffect(() => {
@@ -208,6 +214,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     if (pos.x >= imageRect.x && pos.x <= imageRect.x + imageRect.width &&
         pos.y >= imageRect.y && pos.y <= imageRect.y + imageRect.height) {
         setIsPanning(true);
+        setCursor('grabbing');
     }
   };
 
@@ -234,7 +241,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
       pos.x >= imageRect.x && pos.x <= imageRect.x + imageRect.width &&
       pos.y >= imageRect.y && pos.y <= imageRect.y + imageRect.height
     ) {
-      newCursor = 'move';
+      newCursor = 'grab';
     }
 
     setCursor(newCursor);
@@ -294,7 +301,10 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
 
   const handleInteractionEnd = () => {
     setActiveHandle(null);
-    setIsPanning(false);
+    if(isPanning) {
+        setIsPanning(false);
+        setCursor('grab');
+    }
   };
   
   useEffect(() => {
@@ -331,15 +341,51 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   };
 
   const getCroppedDataUrl = () => {
+    const canvas = canvasRef.current;
     const img = imageRef.current;
-    if (!img.src) return null;
+    if (!canvas || !img.src) return null;
+
+    // Determine the part of the image to draw (source) and where to draw it (destination)
+    const sx = Math.max(0, -imageRect.x);
+    const sy = Math.max(0, -imageRect.y);
+    const sWidth = canvas.width - sx - Math.max(0, imageRect.x + imageRect.width - canvas.width);
+    const sHeight = canvas.height - sy - Math.max(0, imageRect.y + imageRect.height - canvas.height);
+
+    // This is the size of the final cropped image
+    const finalWidth = Math.min(imageRect.width, canvas.width, sWidth);
+    const finalHeight = Math.min(imageRect.height, canvas.height, sHeight);
+
+    if (finalWidth <= 0 || finalHeight <= 0) {
+      toast({
+        title: 'Error',
+        description: 'Cannot crop an empty area.',
+        variant: 'destructive',
+      });
+      return null;
+    }
 
     const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = imageRect.width;
-    finalCanvas.height = imageRect.height;
+    finalCanvas.width = finalWidth;
+    finalCanvas.height = finalHeight;
     const finalCtx = finalCanvas.getContext('2d')!;
 
-    finalCtx.drawImage(img, 0, 0, imageRect.width, imageRect.height);
+    // Calculate source coordinates from the original image dimensions
+    const sourceImageX = (sx - imageRect.x) * (img.width / imageRect.width);
+    const sourceImageY = (sy - imageRect.y) * (img.height / imageRect.height);
+    const sourceImageWidth = sWidth * (img.width / imageRect.width);
+    const sourceImageHeight = sHeight * (img.height / imageRect.height);
+
+    finalCtx.drawImage(
+      img,
+      sourceImageX,
+      sourceImageY,
+      sourceImageWidth,
+      sourceImageHeight,
+      0, // Draw at the top-left of the new canvas
+      0,
+      finalWidth,
+      finalHeight
+    );
     
     return finalCanvas.toDataURL('image/png');
   };
@@ -436,7 +482,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
         <canvas
           ref={canvasRef}
           className="w-full h-full"
-          style={{ cursor: isPanning ? 'grabbing' : cursor, touchAction: 'none' }}
+          style={{ cursor, touchAction: 'none' }}
           onMouseDown={handleInteractionStart}
           onTouchStart={handleInteractionStart}
           onMouseMove={handleCanvasMouseMove}
