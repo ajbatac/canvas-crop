@@ -137,51 +137,56 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
-  
+
     const handleResize = () => {
-      const canvas = canvasRef.current;
-      if (!canvas) return;
-  
-      canvas.width = container.clientWidth;
-      canvas.height = container.clientHeight;
-  
-      setImageRect(prevRect => {
-        if (prevRect.width === 0 || prevRect.height === 0) {
-          // If we don't have an image yet, don't try to calculate new dimensions.
-          // This can happen on initial load.
-          return prevRect;
-        }
-  
-        // Calculate new dimensions based on the new container size, maintaining aspect ratio.
-        const currentImageAR = prevRect.width / prevRect.height;
-        const containerAR = container.clientWidth / container.clientHeight;
-        let newWidth, newHeight;
-  
-        // Fit the image within an 80% bounding box of the container.
-        if (currentImageAR > containerAR) {
-          newWidth = container.clientWidth * 0.8;
-          newHeight = newWidth / currentImageAR;
-        } else {
-          newHeight = container.clientHeight * 0.8;
-          newWidth = newHeight * currentImageAR;
-        }
-  
-        const newX = (container.clientWidth - newWidth) / 2;
-        const newY = (container.clientHeight - newHeight) / 2;
-  
-        return { x: newX, y: newY, width: newWidth, height: newHeight };
-      });
+        const canvas = canvasRef.current;
+        if (!canvas) return;
+
+        // Sync canvas dimensions with container
+        canvas.width = container.clientWidth;
+        canvas.height = container.clientHeight;
+        
+        // Recalculate image position and size based on new canvas dimensions
+        setImageRect(prevRect => {
+            if (prevRect.width === 0 || prevRect.height === 0) {
+                // This case can happen on initial load before the image is ready.
+                // We'll let the `loadImage` function handle the initial sizing.
+                return prevRect;
+            }
+
+            const currentImageAR = prevRect.width / prevRect.height;
+            const containerAR = canvas.width / canvas.height;
+            let newWidth, newHeight;
+            
+            // Fit the image within an 80% bounding box, maintaining its aspect ratio
+            if (currentImageAR > containerAR) {
+                newWidth = canvas.width * 0.8;
+                newHeight = newWidth / currentImageAR;
+            } else {
+                newHeight = canvas.height * 0.8;
+                newWidth = newHeight * currentImageAR;
+            }
+            
+            const newX = (canvas.width - newWidth) / 2;
+            const newY = (canvas.height - newHeight) / 2;
+            
+            return { x: newX, y: newY, width: newWidth, height: newHeight };
+        });
     };
-  
+    
     // Use ResizeObserver to detect when the container size changes.
     const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(container);
-  
-    // Initial resize call to set up the canvas and image correctly.
+
+    // Initial resize to set up the canvas.
     handleResize();
-  
-    return () => resizeObserver.disconnect();
-  }, [imageFile]); // Rerun this effect if the image file changes.
+
+    return () => {
+      if (container) {
+        resizeObserver.unobserve(container);
+      }
+    };
+  }, []); // Empty dependency array means this runs once on mount.
 
 
   useEffect(() => {
@@ -260,37 +265,38 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
 
     if (activeHandle) {
       setImageRect(currentRect => {
-        let { x, y, width, height } = currentRect;
-        const aspectRatio = width / height;
-        
-        let newWidth = width;
-        let newHeight = height;
+          let { x, y, width, height } = currentRect;
+          const aspectRatio = width / height;
 
-        if (activeHandle.includes('Right')) {
-          newWidth = Math.max(MIN_DIMENSION, width + deltaX);
-        } else if (activeHandle.includes('Left')) {
-          newWidth = Math.max(MIN_DIMENSION, width - deltaX);
-          x += width - newWidth;
-        }
+          let newWidth = width;
+          let newHeight = height;
 
-        if (activeHandle.includes('Bottom')) {
-          newHeight = Math.max(MIN_DIMENSION / aspectRatio, height + deltaY);
-        } else if (activeHandle.includes('Top')) {
-          newHeight = Math.max(MIN_DIMENSION / aspectRatio, height - deltaY);
-          y += height - newHeight;
-        }
+          // Determine the primary axis of movement to drive the resize
+          if (Math.abs(deltaX) > Math.abs(deltaY)) {
+              if (activeHandle.includes('Right')) {
+                  newWidth = Math.max(MIN_DIMENSION, width + deltaX);
+              } else if (activeHandle.includes('Left')) {
+                  newWidth = Math.max(MIN_DIMENSION, width - deltaX);
+              }
+              newHeight = newWidth / aspectRatio;
+          } else {
+              if (activeHandle.includes('Bottom')) {
+                  newHeight = Math.max(MIN_DIMENSION / aspectRatio, height + deltaY);
+              } else if (activeHandle.includes('Top')) {
+                  newHeight = Math.max(MIN_DIMENSION / aspectRatio, height - deltaY);
+              }
+              newWidth = newHeight * aspectRatio;
+          }
 
-        if (Math.abs(deltaX) > Math.abs(deltaY)) {
-          const oldHeight = height;
-          newHeight = newWidth / aspectRatio;
-          y += (oldHeight - newHeight) / 2;
-        } else {
-          const oldWidth = width;
-          newWidth = newHeight * aspectRatio;
-          x += (oldWidth - newWidth) / 2;
-        }
-        
-        return { x, y, width: newWidth, height: newHeight };
+          // Adjust position based on which handle is being dragged
+          if (activeHandle.includes('Left')) {
+              x += width - newWidth;
+          }
+          if (activeHandle.includes('Top')) {
+              y += height - newHeight;
+          }
+          
+          return { x, y, width: newWidth, height: newHeight };
       });
     } else if (isPanning) {
       setImageRect(r => ({ ...r, x: r.x + deltaX, y: r.y + deltaY }));
@@ -345,17 +351,21 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     const img = imageRef.current;
     if (!canvas || !img.src) return null;
 
-    // Determine the part of the image to draw (source) and where to draw it (destination)
-    const sx = Math.max(0, -imageRect.x);
-    const sy = Math.max(0, -imageRect.y);
-    const sWidth = canvas.width - sx - Math.max(0, imageRect.x + imageRect.width - canvas.width);
-    const sHeight = canvas.height - sy - Math.max(0, imageRect.y + imageRect.height - canvas.height);
+    // Determine the visible part of the image on the canvas
+    const cropX = Math.max(0, imageRect.x);
+    const cropY = Math.max(0, imageRect.y);
 
-    // This is the size of the final cropped image
-    const finalWidth = Math.min(imageRect.width, canvas.width, sWidth);
-    const finalHeight = Math.min(imageRect.height, canvas.height, sHeight);
+    const cropWidth = Math.min(
+      imageRect.x + imageRect.width,
+      canvas.width
+    ) - cropX;
 
-    if (finalWidth <= 0 || finalHeight <= 0) {
+    const cropHeight = Math.min(
+      imageRect.y + imageRect.height,
+      canvas.height
+    ) - cropY;
+
+    if (cropWidth <= 0 || cropHeight <= 0) {
       toast({
         title: 'Error',
         description: 'Cannot crop an empty area.',
@@ -364,27 +374,26 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
       return null;
     }
 
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = finalWidth;
-    finalCanvas.height = finalHeight;
-    const finalCtx = finalCanvas.getContext('2d')!;
+    // Determine the source region from the original image
+    const sourceX = (cropX - imageRect.x) * (img.naturalWidth / imageRect.width);
+    const sourceY = (cropY - imageRect.y) * (img.naturalHeight / imageRect.height);
+    const sourceWidth = cropWidth * (img.naturalWidth / imageRect.width);
+    const sourceHeight = cropHeight * (img.naturalHeight / imageRect.height);
 
-    // Calculate source coordinates from the original image dimensions
-    const sourceImageX = (sx - imageRect.x) * (img.width / imageRect.width);
-    const sourceImageY = (sy - imageRect.y) * (img.height / imageRect.height);
-    const sourceImageWidth = sWidth * (img.width / imageRect.width);
-    const sourceImageHeight = sHeight * (img.height / imageRect.height);
+    const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = cropWidth;
+    finalCanvas.height = cropHeight;
+    const finalCtx = finalCanvas.getContext('2d')!;
 
     finalCtx.drawImage(
       img,
-      sourceImageX,
-      sourceImageY,
-      sourceImageWidth,
-      sourceImageHeight,
-      0, // Draw at the top-left of the new canvas
-      0,
-      finalWidth,
-      finalHeight
+      sourceX,
+      sourceY,
+      sourceWidth,
+      sourceHeight,
+      0, 0, // Draw at the top-left of the new canvas
+      cropWidth,
+      cropHeight
     );
     
     return finalCanvas.toDataURL('image/png');
