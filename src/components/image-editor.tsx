@@ -100,7 +100,6 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     img.onload = () => {
       if (!container || !canvas) return;
 
-      // Ensure canvas is sized before calculations
       const containerWidth = container.clientWidth;
       const containerHeight = container.clientHeight;
       if (containerWidth === 0 || containerHeight === 0) return;
@@ -136,39 +135,47 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   }, [imageFile]);
 
   useEffect(() => {
-    const canvas = canvasRef.current;
     const container = containerRef.current;
-    if (!canvas || !container) return;
-
-    const resizeObserver = new ResizeObserver(() => {
-      const currentImageAR = imageRect.width / imageRect.height;
-      if (!container.clientWidth || !container.clientHeight || !imageRect.width) return;
-      
+    if (!container) return;
+  
+    const handleResize = () => {
+      const canvas = canvasRef.current;
+      if (!canvas) return;
+  
       canvas.width = container.clientWidth;
       canvas.height = container.clientHeight;
-      
-      setImageRect(prev => {
+  
+      setImageRect(prevRect => {
+        if (prevRect.width === 0 || prevRect.height === 0) {
+          return prevRect;
+        }
+  
+        const currentImageAR = prevRect.width / prevRect.height;
         const containerAR = container.clientWidth / container.clientHeight;
         let newWidth, newHeight;
-        
+  
         if (currentImageAR > containerAR) {
-            newWidth = container.clientWidth * 0.8;
-            newHeight = newWidth / currentImageAR;
+          newWidth = container.clientWidth * 0.8;
+          newHeight = newWidth / currentImageAR;
         } else {
-            newHeight = container.clientHeight * 0.8;
-            newWidth = newHeight * currentImageAR;
+          newHeight = container.clientHeight * 0.8;
+          newWidth = newHeight * currentImageAR;
         }
-
+  
         const newX = (container.clientWidth - newWidth) / 2;
         const newY = (container.clientHeight - newHeight) / 2;
-
+  
         return { x: newX, y: newY, width: newWidth, height: newHeight };
       });
-    });
+    };
+  
+    const resizeObserver = new ResizeObserver(handleResize);
     resizeObserver.observe(container);
-
+  
+    handleResize();
+  
     return () => resizeObserver.disconnect();
-  }, [redrawCanvas, imageRect.width, imageRect.height]);
+  }, [imageFile]);
 
 
   useEffect(() => {
@@ -236,8 +243,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   const handleInteractionMove = useCallback((e: MouseEvent | TouchEvent) => {
     if (!activeHandle && !isPanning) return;
     
-    // Prevent default scrolling behavior on touch devices
-    if ('touches' in e) {
+    if (e.cancelable) {
       e.preventDefault();
     }
 
@@ -267,8 +273,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
           y += height - newHeight;
         }
 
-        // Maintain aspect ratio
-        if (activeHandle.includes('Left') || activeHandle.includes('Right')) {
+        if (Math.abs(deltaX) > Math.abs(deltaY)) {
           const oldHeight = height;
           newHeight = newWidth / aspectRatio;
           y += (oldHeight - newHeight) / 2;
@@ -293,18 +298,18 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   };
   
   useEffect(() => {
-    // Mouse events
-    window.addEventListener('mousemove', handleInteractionMove);
+    const handleMove = (e: MouseEvent | TouchEvent) => handleInteractionMove(e);
+    
+    window.addEventListener('mousemove', handleMove);
     window.addEventListener('mouseup', handleInteractionEnd);
     
-    // Touch events
-    window.addEventListener('touchmove', handleInteractionMove, { passive: false });
+    window.addEventListener('touchmove', handleMove, { passive: false });
     window.addEventListener('touchend', handleInteractionEnd);
     
     return () => {
-      window.removeEventListener('mousemove', handleInteractionMove);
+      window.removeEventListener('mousemove', handleMove);
       window.removeEventListener('mouseup', handleInteractionEnd);
-      window.removeEventListener('touchmove', handleInteractionMove);
+      window.removeEventListener('touchmove', handleMove);
       window.removeEventListener('touchend', handleInteractionEnd);
     };
   }, [handleInteractionMove]);
