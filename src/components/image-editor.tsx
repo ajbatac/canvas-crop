@@ -2,7 +2,6 @@
 
 import type React from 'react';
 import { useState, useRef, useEffect, useCallback } from 'react';
-import { upscaleImage } from '@/ai/flows/upscale-image';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Card } from '@/components/ui/card';
@@ -11,9 +10,7 @@ import {
   Copy,
   ZoomIn,
   ZoomOut,
-  Sparkles,
   Trash2,
-  Loader2,
 } from 'lucide-react';
 import {
   Tooltip,
@@ -35,7 +32,6 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   const containerRef = useRef<HTMLDivElement>(null);
   const imageRef = useRef<HTMLImageElement>(new Image());
   const [zoom, setZoom] = useState(1);
-  const [isUpscaling, setIsUpscaling] = useState(false);
   const { toast } = useToast();
 
   const [imageRect, setImageRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
@@ -268,29 +264,6 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     }
   };
 
-  const handleUpscale = async () => {
-    const dataUrl = getCroppedDataUrl();
-    if (!dataUrl) return;
-    setIsUpscaling(true);
-    try {
-      const result = await upscaleImage({ photoDataUri: dataUrl });
-      loadImage(result.upscaledPhotoDataUri);
-      toast({
-        title: 'Upscale Successful',
-        description: 'Your image has been upscaled with AI.',
-      });
-    } catch (error) {
-      console.error('Upscaling failed', error);
-      toast({
-        title: 'Upscale Failed',
-        description: 'An error occurred while upscaling the image.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsUpscaling(false);
-    }
-  };
-
   return (
     <div className="w-full h-[calc(100vh-8rem)] flex flex-col gap-4">
       <Card className="flex-shrink-0">
@@ -314,15 +287,6 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                   </Button>
                 </TooltipTrigger>
                 <TooltipContent>Copy to Clipboard</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={handleUpscale} disabled={isUpscaling}>
-                    {isUpscaling ? <Loader2 className="w-5 h-5 animate-spin" /> : <Sparkles className="w-5 h-5" />}
-                    <span className="sr-only">Upscale with AI</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Upscale with AI</TooltipContent>
               </Tooltip>
             </div>
             <div className="flex items-center gap-2 w-full max-w-xs">

@@ -7,8 +7,8 @@ import { Toaster } from '@/components/ui/toaster';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'Canvas Crop - AI Image Resizer',
-  description: 'Resize, crop, and upscale images with AI-powered precision.',
+  title: 'Canvas Crop - Image Resizer',
+  description: 'Resize and crop images with ease.',
 };
 
 export default function RootLayout({
