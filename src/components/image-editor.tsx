@@ -58,6 +58,23 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     if (!canvas || !ctx || !img.src) return;
 
     ctx.clearRect(0, 0, canvas.width, canvas.height);
+
+    // Draw a checkerboard pattern for transparency
+    const patternCanvas = document.createElement('canvas');
+    const patternCtx = patternCanvas.getContext('2d')!;
+    patternCanvas.width = 20;
+    patternCanvas.height = 20;
+    patternCtx.fillStyle = '#e0e0e0';
+    patternCtx.fillRect(0, 0, 10, 10);
+    patternCtx.fillRect(10, 10, 10, 10);
+    patternCtx.fillStyle = '#f0f0f0';
+    patternCtx.fillRect(0, 10, 10, 10);
+    patternCtx.fillRect(10, 0, 10, 10);
+    const pattern = ctx.createPattern(patternCanvas, 'repeat')!;
+    ctx.fillStyle = pattern;
+    ctx.fillRect(0, 0, canvas.width, canvas.height);
+
+
     ctx.drawImage(img, imageRect.x, imageRect.y, imageRect.width, imageRect.height);
     
     // Draw border and handles
@@ -160,7 +177,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     
     const pos = getMousePos(e);
     const handles = getHandles();
-    let newCursor = 'grab';
+    let newCursor = 'default'; // Changed from 'grab'
 
     const handleHotspot = HANDLE_SIZE;
 
@@ -191,25 +208,34 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     if (activeHandle) {
       setImageRect(currentRect => {
         let { x, y, width, height } = currentRect;
-        const aspectRatio = imageRef.current.width / imageRef.current.height;
+        const aspectRatio = width / height;
         
         let newWidth = width;
-        let deltaWidth = 0;
+        let newHeight = height;
 
         if (activeHandle.includes('Right')) {
-          deltaWidth = deltaX;
+          newWidth = Math.max(MIN_DIMENSION, width + deltaX);
         } else if (activeHandle.includes('Left')) {
-          deltaWidth = -deltaX;
+          newWidth = Math.max(MIN_DIMENSION, width - deltaX);
+          x += width - newWidth;
         }
-        
-        newWidth = Math.max(MIN_DIMENSION, width + deltaWidth);
-        const newHeight = newWidth / aspectRatio;
 
-        if (activeHandle.includes('Left')) {
-          x -= newWidth - width;
+        if (activeHandle.includes('Bottom')) {
+          newHeight = Math.max(MIN_DIMENSION / aspectRatio, height + deltaY);
+        } else if (activeHandle.includes('Top')) {
+          newHeight = Math.max(MIN_DIMENSION / aspectRatio, height - deltaY);
+          y += height - newHeight;
         }
-        if (activeHandle.includes('Top')) {
-          y -= newHeight - height;
+
+        // Maintain aspect ratio
+        if (activeHandle.includes('Left') || activeHandle.includes('Right')) {
+          const oldHeight = height;
+          newHeight = newWidth / aspectRatio;
+          y += (oldHeight - newHeight) / 2;
+        } else {
+          const oldWidth = width;
+          newWidth = newHeight * aspectRatio;
+          x += (oldWidth - newWidth) / 2;
         }
         
         return { x, y, width: newWidth, height: newHeight };
@@ -252,43 +278,17 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   };
 
   const getCroppedDataUrl = () => {
-    const tempCanvas = document.createElement('canvas');
     const img = imageRef.current;
     if (!img.src) return null;
 
-    const { x, y, width, height } = imageRect;
-    const canvas = canvasRef.current!;
-
-    // The portion of the original image to draw
-    const sourceX = (canvas.width / 2 - x - width / 2) / width * img.width;
-    const sourceY = (canvas.height / 2 - y - height / 2) / height * img.height;
-    const sourceWidth = img.width;
-    const sourceHeight = img.height;
-    
-    // Where on the temp canvas to draw the image
-    const destX = 0;
-    const destY = 0;
-    const destWidth = img.width;
-    const destHeight = img.height;
-    
-    tempCanvas.width = destWidth;
-    tempCanvas.height = destHeight;
-
-    const ctx = tempCanvas.getContext('2d')!;
-    ctx.drawImage(img, sourceX, sourceY, sourceWidth, sourceHeight, destX, destY, destWidth, destHeight);
-
-    // Now, create a final canvas with the exact cropped dimensions
     const finalCanvas = document.createElement('canvas');
+    finalCanvas.width = imageRect.width;
+    finalCanvas.height = imageRect.height;
     const finalCtx = finalCanvas.getContext('2d')!;
 
-    const cropX = Math.max(0, x);
-    const cropY = Math.max(0, y);
-    const cropWidth = Math.min(canvas.width, width) - Math.max(0, x) + Math.min(0, x);
-    const cropHeight = Math.min(canvas.height, height) - Math.max(0, y) + Math.min(0, y);
-
-    finalCanvas.width = cropWidth;
-    finalCanvas.height = cropHeight;
-    finalCtx.drawImage(canvas, cropX, cropY, cropWidth, cropHeight, 0, 0, cropWidth, cropHeight);
+    // Draw the original image onto the final canvas at the final size
+    // This performs the resizing.
+    finalCtx.drawImage(img, 0, 0, imageRect.width, imageRect.height);
     
     return finalCanvas.toDataURL('image/png');
   };
@@ -318,7 +318,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     if (!dataUrl) return;
 
     const link = document.createElement('a');
-    link.download = 'cropped-image.png';
+    link.download = 'resized-image.png';
     link.href = dataUrl;
     document.body.appendChild(link);
     link.click();
@@ -374,6 +374,9 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                 onValueChange={([val]) => handleZoom(val)}
               />
               <ZoomIn className="w-5 h-5 text-muted-foreground" />
+            </div>
+             <div className="text-sm text-muted-foreground w-32 text-center">
+              {Math.round(imageRect.width)} x {Math.round(imageRect.height)}
             </div>
           </TooltipProvider>
         </div>
