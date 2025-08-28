@@ -235,7 +235,11 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
 
   const handleInteractionMove = useCallback((e: MouseEvent | TouchEvent) => {
     if (!activeHandle && !isPanning) return;
-    e.preventDefault();
+    
+    // Prevent default scrolling behavior on touch devices
+    if ('touches' in e) {
+      e.preventDefault();
+    }
 
     const pos = getEventPos(e);
     const deltaX = pos.x - lastPos.x;
@@ -289,23 +293,18 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   };
   
   useEffect(() => {
-    const canvas = canvasRef.current;
-    if (!canvas) return;
-
     // Mouse events
     window.addEventListener('mousemove', handleInteractionMove);
     window.addEventListener('mouseup', handleInteractionEnd);
     
     // Touch events
-    canvas.addEventListener('touchmove', handleInteractionMove, { passive: false });
+    window.addEventListener('touchmove', handleInteractionMove, { passive: false });
     window.addEventListener('touchend', handleInteractionEnd);
     
     return () => {
       window.removeEventListener('mousemove', handleInteractionMove);
       window.removeEventListener('mouseup', handleInteractionEnd);
-      if (canvas) {
-        canvas.removeEventListener('touchmove', handleInteractionMove);
-      }
+      window.removeEventListener('touchmove', handleInteractionMove);
       window.removeEventListener('touchend', handleInteractionEnd);
     };
   }, [handleInteractionMove]);
