@@ -27,7 +27,7 @@ export function FooterCopyright() {
           >
             AJ Batac (@ajbatac)
           </a>{' '}
-          - v1.0.2 (
+          - v1.0.3 (
           <a
             href="/changelog"
             className="font-medium text-primary underline-offset-4 hover:underline"

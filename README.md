@@ -154,4 +154,4 @@ The project follows a standard Next.js App Router structure. Here is an overview
 
 ---
 
-Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.0.2 (<a href="/changelog">changelog</a>)
+Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.0.3 (<a href="/changelog">changelog</a>)

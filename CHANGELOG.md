@@ -5,12 +5,24 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.0.3] - 2025-08-28
+
+### Changed
+- Refactored image editor event handling to support both mouse and touch events, fixing mobile Safari compatibility.
+- Corrected image resizing logic to strictly maintain aspect ratio and prevent distortion.
+- Fixed a bug preventing the image from appearing on desktop after mobile fixes were implemented.
+- Corrected the cropping logic to ensure the output image is properly cropped to the canvas boundaries.
+
+### Fixed
+- Resolved a console error caused by an incorrect prop name (`onValueValueChange`) in the `Slider` component.
+
 ## [1.0.2] - 2025-08-28
 
 ### Added
 - Comprehensive legal pages: `Terms of Service`, `Privacy Policy`, `DMCA Policy`, `Cookie Policy`, `Disclaimer`, and `UGC Disclaimer`.
 - New `legal-page.tsx` component to provide a consistent layout for all legal documents.
 - Added `@tailwindcss/typography` plugin for improved content formatting on legal pages.
+- Added favicon, apple-touch-icon, and web manifest links to the main layout.
 
 ### Changed
 - Updated the footer to include a dedicated section with links to all legal pages.

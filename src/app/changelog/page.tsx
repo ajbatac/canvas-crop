@@ -7,6 +7,22 @@ import { Badge } from '@/components/ui/badge';
 
 const changelog = [
   {
+    version: '1.0.3',
+    date: '2025-08-28',
+    sections: {
+      Changed: [
+        'Refactored image editor event handling to support both mouse and touch events, fixing mobile Safari compatibility.',
+        'Corrected image resizing logic to strictly maintain aspect ratio and prevent distortion.',
+        'Fixed a bug preventing the image from appearing on desktop after mobile fixes were implemented.',
+        'Corrected the cropping logic to ensure the output image is properly cropped to the canvas boundaries.',
+      ],
+      Fixed: [
+        'Resolved a console error caused by an incorrect prop name (`onValueValueChange`) in the `Slider` component.',
+      ],
+      Removed: [],
+    },
+  },
+  {
     version: '1.0.2',
     date: '2025-08-28',
     sections: {
@@ -14,6 +30,7 @@ const changelog = [
         'Comprehensive legal pages: `Terms of Service`, `Privacy Policy`, `DMCA Policy`, `Cookie Policy`, `Disclaimer`, and `UGC Disclaimer`.',
         'New `legal-page.tsx` component to provide a consistent layout for all legal documents.',
         'Added `@tailwindcss/typography` plugin for improved content formatting on legal pages.',
+        'Added favicon, apple-touch-icon, and web manifest links to the main layout.',
       ],
       Changed: [
         'Updated the footer to include a dedicated section with links to all legal pages.',
@@ -65,7 +82,7 @@ const changelog = [
   },
 ];
 
-const Section = ({ title, items, icon: Icon, badgeVariant }: { title: string, items: string[], icon: React.ElementType, badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline' }) => {
+const Section = ({ title, items, icon: Icon, badgeVariant }: { title: string, items: string[], icon: React.ElementType, badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline' | 'fixed' }) => {
   if (!items || items.length === 0) return null;
   return (
     <div>
@@ -118,6 +135,8 @@ export default function ChangelogPage() {
                 <CardContent className="space-y-6">
                   <Section title="Added" items={entry.sections.Added} icon={FilePlus} badgeVariant="default" />
                   <Section title="Changed" items={entry.sections.Changed} icon={FileText} badgeVariant="secondary" />
+                  {/* @ts-ignore */}
+                  <Section title="Fixed" items={entry.sections.Fixed} icon={FileText} badgeVariant="fixed" />
                   <Section title="Removed" items={entry.sections.Removed} icon={Trash2} badgeVariant="destructive" />
                 </CardContent>
               </Card>
