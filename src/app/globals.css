@@ -79,7 +79,6 @@
     @apply border-border;
   }
   body {
-    @apply text-foreground;
-    background-color: red;
+    @apply bg-background text-foreground;
   }
 }
