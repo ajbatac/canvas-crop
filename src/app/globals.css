@@ -79,8 +79,7 @@
     @apply border-border;
   }
   body {
-    @apply bg-background text-foreground;
-    background-image: radial-gradient(hsl(var(--muted-foreground) / 0.3) 1px, transparent 1px);
-    background-size: 16px 16px;
+    @apply text-foreground;
+    background-color: red;
   }
 }
