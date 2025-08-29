@@ -3,6 +3,7 @@
 import React from 'react';
 import Link from 'next/link';
 import { Separator } from '@/components/ui/separator';
+import { Github } from 'lucide-react';
 
 const legalLinks = [
   { href: '/legal/terms-of-service', text: 'Terms of Service' },
@@ -37,6 +38,16 @@ export function FooterCopyright() {
           )
         </div>
         <div className="flex flex-wrap items-center justify-center gap-x-4 gap-y-2">
+           <Link
+              href="https://github.com/ajbatac/canvas-crop"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-primary transition-colors"
+            >
+              <Github className="w-3 h-3" />
+              Open Source
+            </Link>
+             <Separator orientation="vertical" className="h-4" />
           {legalLinks.map((link, index) => (
             <React.Fragment key={link.href}>
               <Link
