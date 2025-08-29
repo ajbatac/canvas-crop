@@ -80,7 +80,7 @@
   }
   body {
     @apply bg-background text-foreground;
-    background-image: radial-gradient(hsl(var(--muted-foreground) / 1) 0.5px, transparent 0.5px);
-    background-size: 8px 8px;
+    background-image: radial-gradient(hsl(var(--muted-foreground) / 0.3) 1px, transparent 1px);
+    background-size: 16px 16px;
   }
 }
