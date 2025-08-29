@@ -7,6 +7,7 @@ import { Crop, Scale, ZoomIn, Download, Copy, Github } from 'lucide-react';
 import { FooterCopyright } from '@/components/footerCopyright';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import Link from 'next/link';
+import { ThemeToggle } from '@/components/theme-toggle';
 
 const FeatureCard = ({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) => (
   <Card className="text-left">
@@ -36,6 +37,9 @@ export default function Home() {
 
   return (
     <div className="flex flex-col min-h-screen">
+       <header className="absolute top-0 right-0 p-4 lg:p-6 z-10">
+        <ThemeToggle />
+      </header>
       <main className="flex-grow w-full flex flex-col items-center justify-center bg-background p-4 lg:p-8">
         <div className="w-full max-w-7xl">
           {!imageFile ? (
