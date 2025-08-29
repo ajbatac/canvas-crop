@@ -45,7 +45,7 @@ export default function Home() {
                   Canvas Crop
                 </h1>
               </div>
-              <p className="max-w-2xl text-muted-foreground md:text-lg mb-8">
+              <p className="max-w-2xl text-muted-foreground mb-8">
                 A simple tool to resize and crop your images. Your privacy is paramount—everything happens on your local computer, so your files are never uploaded or saved. Drag and drop a file to get started.
               </p>
               <FileUploader onFileSelect={handleFileSelect} />
