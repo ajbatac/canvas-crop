@@ -61,34 +61,44 @@ export function FileUploader({ onFileSelect }: FileUploaderProps) {
   };
 
   return (
-    <Card 
+    <div
       className={cn(
-        'w-full max-w-lg border-2 border-dashed transition-all duration-300',
-        isDragging ? 'border-primary bg-accent' : 'border-border'
+        'w-full max-w-lg rounded-lg p-1 bg-gradient-to-r from-purple-500 to-orange-500 transition-all duration-300',
+        isDragging && 'scale-105'
       )}
       onDragEnter={handleDragEnter}
       onDragLeave={handleDragLeave}
       onDragOver={handleDragOver}
       onDrop={handleDrop}
     >
-      <CardContent className="p-6">
-        <label htmlFor="file-upload" className="flex flex-col items-center justify-center space-y-4 cursor-pointer">
-          <div className="flex h-24 w-24 items-center justify-center rounded-full bg-muted">
-            <Upload className="h-10 w-10 text-muted-foreground" />
-          </div>
-          <div className="space-y-1 text-center">
-            <p className="text-lg font-semibold">Drag & drop your image here</p>
-            <p className="text-muted-foreground">or <span className="text-primary font-medium">click to browse</span></p>
-          </div>
-          <input
-            id="file-upload"
-            type="file"
-            className="sr-only"
-            accept="image/*"
-            onChange={handleFileChange}
-          />
-        </label>
-      </CardContent>
-    </Card>
+      <Card 
+        className={cn(
+          'w-full h-full border-2 border-dashed transition-all duration-300 bg-background',
+          isDragging ? 'border-transparent' : 'border-background'
+        )}
+      >
+        <CardContent className="p-6">
+          <label htmlFor="file-upload" className="flex flex-col items-center justify-center space-y-4 cursor-pointer">
+            <div className={cn(
+              'flex h-24 w-24 items-center justify-center rounded-full transition-colors',
+              isDragging ? 'bg-accent' : 'bg-muted'
+            )}>
+              <Upload className="h-10 w-10 text-muted-foreground" />
+            </div>
+            <div className="space-y-1 text-center">
+              <p className="text-lg font-semibold">Drag & drop your image here</p>
+              <p className="text-muted-foreground">or <span className="text-primary font-medium">click to browse</span></p>
+            </div>
+            <input
+              id="file-upload"
+              type="file"
+              className="sr-only"
+              accept="image/*"
+              onChange={handleFileChange}
+            />
+          </label>
+        </CardContent>
+      </Card>
+    </div>
   );
 }
