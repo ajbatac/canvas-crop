@@ -3,9 +3,10 @@
 import { useState } from 'react';
 import { FileUploader } from '@/components/file-uploader';
 import { ImageEditor } from '@/components/image-editor';
-import { Crop, Scale, ZoomIn, Download, Copy } from 'lucide-react';
+import { Crop, Scale, ZoomIn, Download, Copy, Github } from 'lucide-react';
 import { FooterCopyright } from '@/components/footerCopyright';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
+import Link from 'next/link';
 
 const FeatureCard = ({ icon: Icon, title, description }: { icon: React.ElementType, title: string, description: string }) => (
   <Card className="text-left">
@@ -39,13 +40,17 @@ export default function Home() {
         <div className="w-full max-w-7xl">
           {!imageFile ? (
             <div className="flex flex-col items-center justify-center text-center">
-              <div className="flex items-center gap-3 mb-4">
+              <div className="flex items-center gap-3 mb-2">
                 <Crop className="w-12 h-12 text-primary" />
                 <h1 className="text-4xl md:text-5xl font-bold tracking-tighter text-foreground">
                   Canvas Crop
                 </h1>
               </div>
-              <p className="max-w-2xl text-muted-foreground mb-8">
+              <Link href="https://github.com/ajbatac/canvas-crop" target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 text-muted-foreground hover:text-primary transition-colors mb-4 text-sm">
+                <Github className="w-4 h-4" />
+                <span>Open Source</span>
+              </Link>
+              <p className="max-w-2xl text-muted-foreground mb-8 text-base">
                 A simple tool to resize and crop your images. Your privacy is paramount—everything happens on your local computer, so your files are never uploaded or saved. Drag and drop a file to get started.
               </p>
               <FileUploader onFileSelect={handleFileSelect} />
