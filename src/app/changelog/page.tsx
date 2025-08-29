@@ -7,6 +7,24 @@ import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 const changelog = [
+    {
+    version: '1.1.0',
+    date: '2025-08-28',
+    sections: {
+      Added: [
+        'Implemented a dark/light mode theme toggle using `next-themes`.',
+        'Added a `ThemeProvider` and a `ThemeToggle` button component.',
+        'Placed the theme toggle in the header of all pages for easy access.',
+        'Added an "Open Source" link to the main page footer.',
+      ],
+      Changed: [
+        'Updated the introductory text on the homepage for clarity and conciseness.',
+        'Updated documentation (`README.md`, `CHANGELOG.md`) to reflect the latest changes.',
+        'Incremented the project version to `1.1.0`.',
+      ],
+      Removed: [],
+    },
+  },
   {
     version: '1.0.3',
     date: '2025-08-28',

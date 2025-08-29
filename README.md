@@ -8,6 +8,7 @@ Canvas Crop is a straightforward, client-side web application for resizing and c
 -   **Client-Side Processing**: All image processing happens in your browser, ensuring privacy and speed.
 -   **Interactive Resizing & Panning**: Click and drag corners to resize or move the image within the canvas.
 -   **Zoom Functionality**: Zoom in and out for precise adjustments.
+-   **Dark/Light Mode**: Switch between light and dark themes for your viewing comfort.
 -   **Copy to Clipboard**: Instantly copy the edited image to your clipboard.
 -   **Download Image**: Save the final resized and cropped image as a PNG file.
 -   **Responsive Design**: Works seamlessly on both desktop and mobile devices.
@@ -116,7 +117,9 @@ The project follows a standard Next.js App Router structure. Here is an overview
 │   │   ├── file-uploader.tsx # Component for uploading files
 │   │   ├── image-editor.tsx  # Core image editing component
 │   │   ├── legal-page.tsx  # Layout for legal pages
-│   │   └── footerCopyright.tsx # Footer component with author credit
+│   │   ├── footerCopyright.tsx # Footer component with author credit
+│   │   ├── theme-provider.tsx # Wrapper for next-themes
+│   │   └── theme-toggle.tsx   # Dark/Light mode switch
 │   ├── hooks/              # Custom React hooks
 │   │   └── use-toast.ts    # Hook for displaying toast notifications
 │   ├── lib/                # Utility functions
@@ -137,6 +140,7 @@ The project follows a standard Next.js App Router structure. Here is an overview
 -   **next**: `^15.3.3` - The React framework for production.
 -   **react**: `^18.3.1` - A JavaScript library for building user interfaces.
 -   **react-dom**: `^18.3.1` - Serves as the entry point to the DOM and server renderers for React.
+-   **next-themes**: `^0.3.0` - An abstraction for themes in Next.js.
 -   **typescript**: `^5` - A typed superset of JavaScript that compiles to plain JavaScript.
 -   **tailwindcss**: `^3.4.1` - A utility-first CSS framework for rapid UI development.
 -   **@tailwindcss/typography**: `^0.5.13` - A plugin that provides a set of `prose` classes for beautiful typographic defaults.
@@ -154,4 +158,4 @@ The project follows a standard Next.js App Router structure. Here is an overview
 
 ---
 
-Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.0.3 (<a href="/changelog">changelog</a>)
+Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.1.0 (<a href="/changelog">changelog</a>)

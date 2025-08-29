@@ -5,6 +5,19 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.1.0] - 2025-08-28
+
+### Added
+- Implemented a dark/light mode theme toggle using `next-themes`.
+- Added a `ThemeProvider` and a `ThemeToggle` button component.
+- Placed the theme toggle in the header of all pages for easy access.
+- Added an "Open Source" link to the main page footer.
+
+### Changed
+- Updated the introductory text on the homepage for clarity and conciseness.
+- Updated documentation (`README.md`, `CHANGELOG.md`) to reflect the latest changes.
+- Incremented the project version to `1.1.0`.
+
 ## [1.0.3] - 2025-08-28
 
 ### Changed
