@@ -295,20 +295,18 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
           let newHeight = height;
 
           // Determine the primary axis of movement to drive the resize
-          if (Math.abs(deltaX) > Math.abs(deltaY)) {
-              if (activeHandle.includes('Right')) {
-                  newWidth = Math.max(MIN_DIMENSION, width + deltaX);
-              } else if (activeHandle.includes('Left')) {
-                  newWidth = Math.max(MIN_DIMENSION, width - deltaX);
-              }
-              newHeight = newWidth / aspectRatio;
-          } else {
-              if (activeHandle.includes('Bottom')) {
-                  newHeight = Math.max(MIN_DIMENSION / aspectRatio, height + deltaY);
-              } else if (activeHandle.includes('Top')) {
-                  newHeight = Math.max(MIN_DIMENSION / aspectRatio, height - deltaY);
-              }
+          if (activeHandle.includes('Top')) {
+              newHeight = Math.max(MIN_DIMENSION / aspectRatio, height - deltaY);
               newWidth = newHeight * aspectRatio;
+          } else if (activeHandle.includes('Bottom')) {
+              newHeight = Math.max(MIN_DIMENSION / aspectRatio, height + deltaY);
+              newWidth = newHeight * aspectRatio;
+          } else if (activeHandle.includes('Left')) {
+              newWidth = Math.max(MIN_DIMENSION, width - deltaX);
+              newHeight = newWidth / aspectRatio;
+          } else if (activeHandle.includes('Right')) {
+              newWidth = Math.max(MIN_DIMENSION, width + deltaX);
+              newHeight = newWidth / aspectRatio;
           }
 
           // Adjust position based on which handle is being dragged
