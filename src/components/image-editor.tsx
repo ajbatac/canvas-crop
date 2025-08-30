@@ -37,6 +37,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
 
   const [imageRect, setImageRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
   const [activeHandle, setActiveHandle] = useState<string | null>(null);
+  const [hoveredHandle, setHoveredHandle] = useState<string | null>(null);
   const [isPanning, setIsPanning] = useState(false);
   const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
   const [cursor, setCursor] = useState('grab');
@@ -83,14 +84,21 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     ctx.strokeRect(imageRect.x, imageRect.y, imageRect.width, imageRect.height);
 
     ctx.fillStyle = 'hsl(var(--accent))';
-    ctx.strokeStyle = 'hsl(var(--primary))';
-    Object.values(getHandles()).forEach(handle => {
+    
+    Object.entries(getHandles()).forEach(([name, handle]) => {
+      ctx.strokeStyle = 'hsl(var(--primary))';
+      ctx.lineWidth = name === hoveredHandle ? 4 : 2;
       ctx.beginPath();
-      ctx.rect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+      if (ctx.roundRect) {
+        ctx.roundRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE, [4]);
+      } else {
+        // Fallback for older browsers
+        ctx.rect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
+      }
       ctx.fill();
       ctx.stroke();
     });
-  }, [imageRect, getHandles]);
+  }, [imageRect, getHandles, hoveredHandle]);
 
   const loadImage = (src: string) => {
     const img = imageRef.current;
@@ -230,25 +238,35 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     const pos = getEventPos(e);
     const handles = getHandles();
     let newCursor = 'default';
-
+    let handleUnderCursor: string | null = null;
+    
     const handleHotspot = HANDLE_SIZE;
 
-    const onTopLeft = Math.abs(pos.x - handles.topLeft.x) < handleHotspot && Math.abs(pos.y - handles.topLeft.y) < handleHotspot;
-    const onBottomRight = Math.abs(pos.x - handles.bottomRight.x) < handleHotspot && Math.abs(pos.y - handles.bottomRight.y) < handleHotspot;
-    const onTopRight = Math.abs(pos.x - handles.topRight.x) < handleHotspot && Math.abs(pos.y - handles.topRight.y) < handleHotspot;
-    const onBottomLeft = Math.abs(pos.x - handles.bottomLeft.x) < handleHotspot && Math.abs(pos.y - handles.bottomLeft.y) < handleHotspot;
-
-    if (onTopLeft || onBottomRight) {
-      newCursor = 'nwse-resize';
-    } else if (onTopRight || onBottomLeft) {
-      newCursor = 'nesw-resize';
-    } else if (
-      pos.x >= imageRect.x && pos.x <= imageRect.x + imageRect.width &&
-      pos.y >= imageRect.y && pos.y <= imageRect.y + imageRect.height
-    ) {
-      newCursor = 'grab';
+    for (const [name, handlePos] of Object.entries(handles)) {
+        if (
+            Math.abs(pos.x - handlePos.x) < handleHotspot &&
+            Math.abs(pos.y - handlePos.y) < handleHotspot
+        ) {
+            handleUnderCursor = name;
+            if (name === 'topLeft' || name === 'bottomRight') {
+                newCursor = 'nwse-resize';
+            } else {
+                newCursor = 'nesw-resize';
+            }
+            break;
+        }
     }
 
+    if (!handleUnderCursor) {
+      if (
+        pos.x >= imageRect.x && pos.x <= imageRect.x + imageRect.width &&
+        pos.y >= imageRect.y && pos.y <= imageRect.y + imageRect.height
+      ) {
+        newCursor = 'grab';
+      }
+    }
+    
+    setHoveredHandle(handleUnderCursor);
     setCursor(newCursor);
   };
 
@@ -487,7 +505,11 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
           </TooltipProvider>
         </div>
       </Card>
-      <Card className="flex-grow w-full h-full overflow-hidden" ref={containerRef}>
+      <Card 
+        className="flex-grow w-full h-full overflow-hidden" 
+        ref={containerRef}
+        onMouseLeave={() => setHoveredHandle(null)}
+      >
         <canvas
           ref={canvasRef}
           className="w-full h-full"
