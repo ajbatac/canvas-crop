@@ -287,38 +287,38 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     const deltaY = pos.y - lastPos.y;
 
     if (activeHandle) {
-      setImageRect(currentRect => {
-          let { x, y, width, height } = currentRect;
-          const aspectRatio = width / height;
+        setImageRect(currentRect => {
+            let { x, y, width, height } = currentRect;
+            const aspectRatio = width / height;
 
-          let newWidth = width;
-          let newHeight = height;
+            // Define the anchor points which do not move during resize
+            const right = x + width;
+            const bottom = y + height;
 
-          // Determine the primary axis of movement to drive the resize
-          if (activeHandle.includes('Top')) {
-              newHeight = Math.max(MIN_DIMENSION / aspectRatio, height - deltaY);
-              newWidth = newHeight * aspectRatio;
-          } else if (activeHandle.includes('Bottom')) {
-              newHeight = Math.max(MIN_DIMENSION / aspectRatio, height + deltaY);
-              newWidth = newHeight * aspectRatio;
-          } else if (activeHandle.includes('Left')) {
-              newWidth = Math.max(MIN_DIMENSION, width - deltaX);
-              newHeight = newWidth / aspectRatio;
-          } else if (activeHandle.includes('Right')) {
-              newWidth = Math.max(MIN_DIMENSION, width + deltaX);
-              newHeight = newWidth / aspectRatio;
-          }
-
-          // Adjust position based on which handle is being dragged
-          if (activeHandle.includes('Left')) {
-              x += width - newWidth;
-          }
-          if (activeHandle.includes('Top')) {
-              y += height - newHeight;
-          }
-          
-          return { x, y, width: newWidth, height: newHeight };
-      });
+            switch (activeHandle) {
+                case 'topLeft':
+                    width = Math.max(MIN_DIMENSION, width - deltaX);
+                    height = width / aspectRatio;
+                    x = right - width;
+                    y = bottom - height;
+                    break;
+                case 'topRight':
+                    width = Math.max(MIN_DIMENSION, width + deltaX);
+                    height = width / aspectRatio;
+                    y = bottom - height;
+                    break;
+                case 'bottomLeft':
+                    width = Math.max(MIN_DIMENSION, width - deltaX);
+                    height = width / aspectRatio;
+                    x = right - width;
+                    break;
+                case 'bottomRight':
+                    width = Math.max(MIN_DIMENSION, width + deltaX);
+                    height = width / aspectRatio;
+                    break;
+            }
+            return { x, y, width, height };
+        });
     } else if (isPanning) {
       setImageRect(r => ({ ...r, x: r.x + deltaX, y: r.y + deltaY }));
     }
