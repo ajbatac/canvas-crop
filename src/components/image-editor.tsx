@@ -79,8 +79,13 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     ctx.drawImage(img, imageRect.x, imageRect.y, imageRect.width, imageRect.height);
     
     // Draw border and handles
-    ctx.strokeStyle = 'hsl(var(--primary))';
-    ctx.lineWidth = 2;
+    if (hoveredHandle) {
+      ctx.strokeStyle = 'hsl(var(--primary))';
+      ctx.lineWidth = 2;
+    } else {
+      ctx.strokeStyle = 'hsl(var(--border))';
+      ctx.lineWidth = 1;
+    }
     ctx.strokeRect(imageRect.x, imageRect.y, imageRect.width, imageRect.height);
 
     ctx.fillStyle = 'hsl(var(--accent))';
