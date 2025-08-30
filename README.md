@@ -6,7 +6,7 @@ Canvas Crop is a straightforward, client-side web application for resizing and c
 
 -   **Drag and Drop**: Easily upload images by dragging them onto the application.
 -   **Client-Side Processing**: All image processing happens in your browser, ensuring privacy and speed.
--   **Interactive Resizing & Panning**: Click and drag corners to resize or move the image within the canvas.
+-   **Interactive Resizing & Panning**: Click and drag corners to resize or move the. image within the canvas.
 -   **Zoom Functionality**: Zoom in and out for precise adjustments.
 -   **Dark/Light Mode**: Switch between light and dark themes for your viewing comfort.
 -   **Copy to Clipboard**: Instantly copy the edited image to your clipboard.
@@ -158,4 +158,4 @@ The project follows a standard Next.js App Router structure. Here is an overview
 
 ---
 
-Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.1.0 (<a href="/changelog">changelog</a>)
+Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.2.0 (<a href="/changelog">changelog</a>)

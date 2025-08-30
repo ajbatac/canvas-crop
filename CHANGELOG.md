@@ -5,6 +5,15 @@ All notable changes to this project will be documented in this file.
 The format is based on [Keep a Changelog](https://keepachangelog.com/en/1.0.0/),
 and this project adheres to [Semantic Versioning](https://semver.org/spec/v2.0.0.html).
 
+## [1.2.0] - 2025-08-30
+
+### Changed
+- Improved the UI of the resize handles to have rounded corners and a more prominent hover effect.
+- The image border is now thin and grey by default, becoming thicker and primary-colored on handle hover for a cleaner look.
+
+### Fixed
+- Corrected a bug where dragging the top resize handles caused the image to resize in the wrong direction.
+
 ## [1.1.0] - 2025-08-28
 
 ### Added

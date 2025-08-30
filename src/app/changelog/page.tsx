@@ -1,12 +1,25 @@
 'use client';
 
-import { Crop, FilePlus, FileText, Trash2 } from 'lucide-react';
+import { Crop, FilePlus, FileText, Trash2, Wrench } from 'lucide-react';
 import { FooterCopyright } from '@/components/footerCopyright';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/theme-toggle';
 
 const changelog = [
+    {
+    version: '1.2.0',
+    date: '2025-08-30',
+    sections: {
+      Changed: [
+        'Improved the UI of the resize handles to have rounded corners and a more prominent hover effect.',
+        'The image border is now thin and grey by default, becoming thicker and primary-colored on handle hover for a cleaner look.',
+      ],
+      Fixed: [
+        'Corrected a bug where dragging the top resize handles caused the image to resize in the wrong direction.',
+      ],
+    },
+  },
     {
     version: '1.1.0',
     date: '2025-08-28',
@@ -155,10 +168,13 @@ export default function ChangelogPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
+                  {/* @ts-ignore */}
                   <Section title="Added" items={entry.sections.Added} icon={FilePlus} badgeVariant="default" />
+                  {/* @ts-ignore */}
                   <Section title="Changed" items={entry.sections.Changed} icon={FileText} badgeVariant="secondary" />
                   {/* @ts-ignore */}
-                  <Section title="Fixed" items={entry.sections.Fixed} icon={FileText} badgeVariant="fixed" />
+                  <Section title="Fixed" items={entry.sections.Fixed} icon={Wrench} badgeVariant="fixed" />
+                   {/* @ts-ignore */}
                   <Section title="Removed" items={entry.sections.Removed} icon={Trash2} badgeVariant="destructive" />
                 </CardContent>
               </Card>
