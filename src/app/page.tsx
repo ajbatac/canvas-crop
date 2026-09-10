@@ -11,52 +11,60 @@ import {
   Download,
   Github,
   Lock,
-  Sparkles,
   ChevronRight,
 } from 'lucide-react';
-import { FooterCopyright } from '@/components/footerCopyright';
+import { FooterCopyright } from '@/components/footer-copyright';
 import Link from 'next/link';
 import { ThemeToggle } from '@/components/theme-toggle';
+import { REPO_URL } from '@/lib/constants';
+
+type AccentColor = 'violet' | 'blue' | 'purple' | 'pink';
 
 interface Feature {
   icon: React.ElementType;
   title: string;
   description: string;
-  accent: string;
+  accent: AccentColor;
 }
 
-const features: Feature[] = [
+const features: readonly Feature[] = [
   {
     icon: Crop,
-    title: 'Interactive Crop Box',
+    title: 'Adjustable crop frame',
     description:
-      'Drag 8 precision handles — corners and edges — with a real-time rule-of-thirds composition guide and a dark scrim overlay over cropped-out regions.',
+      'Drag corners or edges to reframe your shot, with a 3×3 grid to help line up your composition.',
     accent: 'violet',
   },
   {
     icon: RectangleHorizontal,
-    title: 'Aspect Ratio Presets',
+    title: 'Aspect ratio presets',
     description:
-      'One click to lock to 1:1 avatar, 16:9 widescreen, 4:3 photo, 9:16 Stories / Reels, 3:2 film, 2:3 portrait, or crop freely without constraints.',
+      'Lock to standard ratios like 1:1, 16:9, 4:3, and 9:16, or resize the box freely.',
     accent: 'blue',
   },
   {
     icon: RotateCcw,
-    title: 'Rotate, Flip & Circle Crop',
+    title: 'Rotate, flip, and circle crop',
     description:
-      'Rotate in 90° increments, flip horizontally or vertically, zoom to inspect fine details, or enable circular avatar mode for perfectly round cutouts.',
+      'Turn photos in 90-degree steps, mirror horizontally or vertically, or switch to a round mask for avatars.',
     accent: 'purple',
   },
   {
     icon: Download,
-    title: 'Lossless High-Res Export',
+    title: 'Full-resolution export',
     description:
-      'Always crops at the original full native resolution. Export as PNG (transparency-safe), JPEG (with quality control), or modern WebP — or copy directly to your clipboard.',
+      'Save at your image’s original resolution in PNG, JPEG, or WebP, or copy the pixels straight to your clipboard.',
     accent: 'pink',
   },
-];
+] as const;
 
-const accentMap: Record<string, { bg: string; icon: string; badge: string }> = {
+interface AccentStyle {
+  bg: string;
+  icon: string;
+  badge: string;
+}
+
+const accentMap: Record<AccentColor, AccentStyle> = {
   violet: {
     bg: 'bg-violet-50 dark:bg-violet-950/30',
     icon: 'text-violet-600 dark:text-violet-400',
@@ -79,6 +87,9 @@ const accentMap: Record<string, { bg: string; icon: string; badge: string }> = {
   },
 };
 
+/**
+ * Feature presentation card displaying an icon, title, and descriptive text.
+ */
 function FeatureCard({ icon: Icon, title, description, accent }: Feature) {
   const colors = accentMap[accent];
   return (
@@ -94,6 +105,10 @@ function FeatureCard({ icon: Icon, title, description, accent }: Feature) {
   );
 }
 
+/**
+ * Main application landing page and workspace router.
+ * If an image is selected, transitions into the ImageEditor.
+ */
 export default function Home() {
   const [imageFile, setImageFile] = useState<File | null>(null);
 
@@ -109,7 +124,7 @@ export default function Home() {
         </div>
         <div className="flex items-center gap-2">
           <Link
-            href="https://github.com/ajbatac/canvas-crop"
+            href={REPO_URL}
             target="_blank"
             rel="noopener noreferrer"
             className="inline-flex items-center gap-1.5 text-xs text-muted-foreground hover:text-foreground transition-colors px-2.5 py-1.5 rounded-lg hover:bg-muted"
@@ -134,22 +149,21 @@ export default function Home() {
                 {/* Privacy badge */}
                 <div className="animate-fade-up inline-flex items-center gap-2 mb-6 px-3 py-1.5 rounded-full border bg-background/80 backdrop-blur-sm text-xs font-medium text-muted-foreground shadow-sm">
                   <Lock className="h-3 w-3 text-emerald-500" />
-                  100% private — nothing is ever uploaded or sent to any server
+                  Runs entirely on your device. Nothing is sent to a server.
                   <ChevronRight className="h-3 w-3 opacity-50" />
                 </div>
 
                 {/* Title */}
                 <h1 className="animate-fade-up-delay-1 text-5xl md:text-7xl font-black tracking-tighter mb-4 leading-[0.95]">
-                  The image{' '}
-                  <span className="gradient-text">cropping tool</span>
+                  Fast, private{' '}
+                  <span className="gradient-text">image cropping</span>
                   <br />
-                  that respects you
+                  in your browser
                 </h1>
 
                 {/* Subtitle */}
                 <p className="animate-fade-up-delay-2 max-w-xl text-base md:text-lg text-muted-foreground mb-10 leading-relaxed">
-                  Professional crop, rotate, flip, and export — entirely in your browser.
-                  Your images never leave your device.
+                  Crop, rotate, and export photos at full quality without uploading them anywhere.
                 </p>
 
                 {/* Uploader */}
@@ -161,9 +175,9 @@ export default function Home() {
                 <div className="animate-fade-up-delay-4 mt-10 flex flex-wrap items-center justify-center gap-x-8 gap-y-2 text-xs text-muted-foreground">
                   {[
                     ['8', 'Crop handles'],
-                    ['8', 'Aspect ratio presets'],
+                    ['8', 'Ratio presets'],
                     ['3', 'Export formats'],
-                    ['0', 'Data uploaded'],
+                    ['0', 'Server uploads'],
                   ].map(([num, label]) => (
                     <div key={label} className="flex items-baseline gap-1.5">
                       <span className="text-2xl font-black text-foreground tabular-nums">{num}</span>
@@ -177,16 +191,14 @@ export default function Home() {
             {/* Feature Grid */}
             <section className="w-full border-t bg-background">
               <div className="max-w-5xl mx-auto px-4 py-20 md:py-28">
-                <div className="flex items-center justify-center gap-2 mb-3">
-                  <Sparkles className="h-4 w-4 text-primary" />
+                <div className="flex items-center justify-center mb-3">
                   <span className="text-xs font-semibold uppercase tracking-widest text-primary">Features</span>
                 </div>
                 <h2 className="text-3xl md:text-4xl font-black tracking-tighter text-center mb-3">
-                  Everything you need,{' '}
-                  <span className="text-muted-foreground font-normal">nothing you don&apos;t.</span>
+                  Built for quick, accurate crops
                 </h2>
                 <p className="text-muted-foreground text-center text-sm mb-12 max-w-lg mx-auto">
-                  Built for designers, developers, and anyone who needs precise image output without uploading to third-party servers.
+                  Useful for profile avatars, video thumbnails, social posts, and site assets.
                 </p>
 
                 <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
@@ -198,10 +210,10 @@ export default function Home() {
                 {/* Open source CTA */}
                 <div className="mt-16 flex flex-col items-center gap-3 text-center">
                   <p className="text-sm text-muted-foreground">
-                    Open source and free forever.
+                    Canvas Crop is free, open source, and runs entirely in your browser.
                   </p>
                   <Link
-                    href="https://github.com/ajbatac/canvas-crop"
+                    href={REPO_URL}
                     target="_blank"
                     rel="noopener noreferrer"
                     className="inline-flex items-center gap-2 text-sm font-medium text-foreground border rounded-xl px-4 py-2 hover:bg-muted transition-colors"

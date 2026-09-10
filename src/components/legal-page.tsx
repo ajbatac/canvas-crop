@@ -1,13 +1,19 @@
 import type React from 'react';
 import { Crop } from 'lucide-react';
-import { FooterCopyright } from '@/components/footerCopyright';
+import { FooterCopyright } from '@/components/footer-copyright';
 import { ThemeToggle } from './theme-toggle';
+import Link from 'next/link';
 
-interface LegalPageProps {
+export interface LegalPageProps {
+  /** The page heading / document title */
   title: string;
+  /** Document body contents */
   children: React.ReactNode;
 }
 
+/**
+ * Common layout wrapper for static legal policy pages.
+ */
 export function LegalPage({ title, children }: LegalPageProps) {
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -15,9 +21,9 @@ export function LegalPage({ title, children }: LegalPageProps) {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Crop className="w-8 h-8 text-primary" />
-            <a href="/" className="text-2xl font-bold tracking-tighter text-foreground">
+            <Link href="/" className="text-2xl font-bold tracking-tighter text-foreground">
               Canvas Crop
-            </a>
+            </Link>
           </div>
           <ThemeToggle />
         </div>

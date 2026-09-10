@@ -1,13 +1,29 @@
 'use client';
 
+import type React from 'react';
 import { Crop, FilePlus, FileText, Trash2, Wrench } from 'lucide-react';
-import { FooterCopyright } from '@/components/footerCopyright';
+import { FooterCopyright } from '@/components/footer-copyright';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
-import { Badge } from '@/components/ui/badge';
+import { Badge, type badgeVariants } from '@/components/ui/badge';
 import { ThemeToggle } from '@/components/theme-toggle';
+import Link from 'next/link';
+import type { VariantProps } from 'class-variance-authority';
 
-const changelog = [
-    {
+type BadgeVariant = NonNullable<VariantProps<typeof badgeVariants>['variant']>;
+
+interface ChangelogEntry {
+  version: string;
+  date: string;
+  sections: {
+    Added?: string[];
+    Changed?: string[];
+    Fixed?: string[];
+    Removed?: string[];
+  };
+}
+
+const changelog: readonly ChangelogEntry[] = [
+  {
     version: '1.2.0',
     date: '2025-08-30',
     sections: {
@@ -20,7 +36,7 @@ const changelog = [
       ],
     },
   },
-    {
+  {
     version: '1.1.0',
     date: '2025-08-28',
     sections: {
@@ -35,7 +51,6 @@ const changelog = [
         'Updated documentation (`README.md`, `CHANGELOG.md`) to reflect the latest changes.',
         'Incremented the project version to `1.1.0`.',
       ],
-      Removed: [],
     },
   },
   {
@@ -51,7 +66,6 @@ const changelog = [
       Fixed: [
         'Resolved a console error caused by an incorrect prop name (`onValueValueChange`) in the `Slider` component.',
       ],
-      Removed: [],
     },
   },
   {
@@ -69,7 +83,6 @@ const changelog = [
         'Updated project documentation (`README.md`, `CHANGELOG.md`) to reflect the latest changes and dependencies.',
         'Incremented the version number in the footer and documentation to `v1.0.2`.',
       ],
-      Removed: [],
     },
   },
   {
@@ -112,9 +125,16 @@ const changelog = [
       ],
     },
   },
-];
+] as const;
 
-const Section = ({ title, items, icon: Icon, badgeVariant }: { title: string, items: string[], icon: React.ElementType, badgeVariant: 'default' | 'secondary' | 'destructive' | 'outline' | 'fixed' }) => {
+interface SectionProps {
+  title: string;
+  items?: string[];
+  icon: React.ElementType;
+  badgeVariant: BadgeVariant;
+}
+
+function Section({ title, items, icon: Icon, badgeVariant }: SectionProps) {
   if (!items || items.length === 0) return null;
   return (
     <div>
@@ -126,13 +146,24 @@ const Section = ({ title, items, icon: Icon, badgeVariant }: { title: string, it
       </h3>
       <ul className="list-disc pl-5 space-y-1 text-muted-foreground">
         {items.map((item, index) => (
-          <li key={index} dangerouslySetInnerHTML={{ __html: item.replace(/`([^`]+)`/g, '<code class="bg-muted text-muted-foreground font-mono text-sm py-0.5 px-1 rounded-sm">$&</code>') }}></li>
+          <li
+            key={index}
+            dangerouslySetInnerHTML={{
+              __html: item.replace(
+                /`([^`]+)`/g,
+                '<code class="bg-muted text-muted-foreground font-mono text-sm py-0.5 px-1 rounded-sm">$1</code>'
+              ),
+            }}
+          />
         ))}
       </ul>
     </div>
   );
-};
+}
 
+/**
+ * Historical changelog page displaying version highlights, features, fixes, and removals.
+ */
 export default function ChangelogPage() {
   return (
     <div className="flex flex-col min-h-screen bg-background">
@@ -140,9 +171,9 @@ export default function ChangelogPage() {
         <div className="flex justify-between items-center">
           <div className="flex items-center gap-3">
             <Crop className="w-8 h-8 text-primary" />
-            <a href="/" className="text-2xl font-bold tracking-tighter text-foreground">
+            <Link href="/" className="text-2xl font-bold tracking-tighter text-foreground">
               Canvas Crop
-            </a>
+            </Link>
           </div>
           <ThemeToggle />
         </div>
@@ -153,9 +184,15 @@ export default function ChangelogPage() {
             <h1 className="text-4xl font-bold tracking-tight">Changelog</h1>
             <p className="mt-2 text-muted-foreground">
               All notable changes to this project, based on{' '}
-              <a href="https://keepachangelog.com/en/1.0.0/" target="_blank" rel="noopener noreferrer" className="text-primary underline-offset-4 hover:underline">
+              <a
+                href="https://keepachangelog.com/en/1.0.0/"
+                target="_blank"
+                rel="noopener noreferrer"
+                className="text-primary underline-offset-4 hover:underline"
+              >
                 Keep a Changelog
-              </a>.
+              </a>
+              .
             </p>
           </div>
           <div className="space-y-12">
@@ -168,14 +205,30 @@ export default function ChangelogPage() {
                   </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-6">
-                  {/* @ts-ignore */}
-                  <Section title="Added" items={entry.sections.Added} icon={FilePlus} badgeVariant="default" />
-                  {/* @ts-ignore */}
-                  <Section title="Changed" items={entry.sections.Changed} icon={FileText} badgeVariant="secondary" />
-                  {/* @ts-ignore */}
-                  <Section title="Fixed" items={entry.sections.Fixed} icon={Wrench} badgeVariant="fixed" />
-                   {/* @ts-ignore */}
-                  <Section title="Removed" items={entry.sections.Removed} icon={Trash2} badgeVariant="destructive" />
+                  <Section
+                    title="Added"
+                    items={entry.sections.Added}
+                    icon={FilePlus}
+                    badgeVariant="default"
+                  />
+                  <Section
+                    title="Changed"
+                    items={entry.sections.Changed}
+                    icon={FileText}
+                    badgeVariant="secondary"
+                  />
+                  <Section
+                    title="Fixed"
+                    items={entry.sections.Fixed}
+                    icon={Wrench}
+                    badgeVariant="fixed"
+                  />
+                  <Section
+                    title="Removed"
+                    items={entry.sections.Removed}
+                    icon={Trash2}
+                    badgeVariant="destructive"
+                  />
                 </CardContent>
               </Card>
             ))}

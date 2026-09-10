@@ -1,6 +1,6 @@
 'use client';
 
-import React, { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback, useMemo } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
@@ -18,7 +18,6 @@ import {
   TooltipTrigger,
 } from '@/components/ui/tooltip';
 import {
-  Crop as CropIcon,
   RotateCw,
   RotateCcw,
   FlipHorizontal,
@@ -32,20 +31,20 @@ import {
   Eye,
   Check,
   Circle,
-  Square,
   ChevronDown,
   RefreshCw,
 } from 'lucide-react';
 import {
-  PixelCrop,
-  HandleType,
-  CropShape,
-  ExportFormat,
-  ImageTransform,
+  type PixelCrop,
+  type HandleType,
+  type CropShape,
+  type ExportFormat,
+  type ImageTransform,
+  type Point,
+  type Dimensions,
   ASPECT_RATIOS,
   getTransformedDimensions,
   getInitialCrop,
-  clampCrop,
   applyAspectToCrop,
   resizeCropWithHandle,
   createCroppedCanvas,
@@ -57,14 +56,62 @@ import {
 } from '@/lib/crop-utils';
 import { CropPreviewDialog } from '@/components/crop/crop-preview-dialog';
 
-interface ImageEditorProps {
+export interface ImageEditorProps {
+  /** The source image file to edit */
   imageFile: File;
+  /** Callback fired when the user chooses to discard and select a new image */
   onNewImage: () => void;
 }
 
-const HANDLE_VISUAL_SIZE = 12;
 const HANDLE_HIT_RADIUS = 20;
 
+/**
+ * Creates and caches a reusable checkerboard tile canvas pattern for transparent image backgrounds.
+ */
+let cachedPattern: CanvasPattern | null = null;
+let patternCanvasRef: HTMLCanvasElement | null = null;
+
+function getCheckerboardPattern(ctx: CanvasRenderingContext2D): CanvasPattern | null {
+  if (cachedPattern) return cachedPattern;
+
+  if (!patternCanvasRef) {
+    patternCanvasRef = document.createElement('canvas');
+    patternCanvasRef.width = 16;
+    patternCanvasRef.height = 16;
+    const pCtx = patternCanvasRef.getContext('2d');
+    if (pCtx) {
+      pCtx.fillStyle = '#e2e4e9';
+      pCtx.fillRect(0, 0, 8, 8);
+      pCtx.fillRect(8, 8, 8, 8);
+      pCtx.fillStyle = '#ffffff';
+      pCtx.fillRect(8, 0, 8, 8);
+      pCtx.fillRect(0, 8, 8, 8);
+    }
+  }
+
+  cachedPattern = ctx.createPattern(patternCanvasRef, 'repeat');
+  return cachedPattern;
+}
+
+interface ViewportLayout {
+  scale: number;
+  imgX: number;
+  imgY: number;
+  viewportWidth: number;
+  viewportHeight: number;
+}
+
+type HitTarget =
+  | { type: 'handle'; handle: HandleType; cursor: string }
+  | { type: 'crop'; cursor: string }
+  | { type: 'image'; cursor: string }
+  | { type: 'outside'; cursor: string };
+
+/**
+ * Interactive canvas image editor providing real-time crop manipulation,
+ * 8-point handles, aspect-ratio constraints, rotation, flipping, zoom, preview,
+ * and lossless export.
+ */
 export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   const { toast } = useToast();
 
@@ -85,10 +132,9 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   });
 
   // Effective dimensions based on rotation
-  const effDimensions = getTransformedDimensions(
-    naturalWidth,
-    naturalHeight,
-    transform.rotate
+  const effDimensions: Dimensions = useMemo(
+    () => getTransformedDimensions(naturalWidth, naturalHeight, transform.rotate),
+    [naturalWidth, naturalHeight, transform.rotate]
   );
 
   // Crop configuration
@@ -98,13 +144,13 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
 
   // Viewport Zoom & Pan
   const [zoom, setZoom] = useState<number>(1);
-  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [panOffset, setPanOffset] = useState<Point>({ x: 0, y: 0 });
 
   // Interactive interaction states
   const [activeHandle, setActiveHandle] = useState<HandleType | null>(null);
   const [isDraggingCrop, setIsDraggingCrop] = useState(false);
   const [isCreatingCrop, setIsCreatingCrop] = useState(false);
-  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [dragStartPos, setDragStartPos] = useState<Point>({ x: 0, y: 0 });
   const [startCrop, setStartCrop] = useState<PixelCrop>({ x: 0, y: 0, width: 0, height: 0 });
   const [cursor, setCursor] = useState<string>('default');
 
@@ -140,13 +186,13 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   }, [imageFile]);
 
   // Current active aspect ratio value
-  const activeAspect = React.useMemo(() => {
+  const activeAspect = useMemo(() => {
     const found = ASPECT_RATIOS.find((a) => a.id === aspectPreset);
     return found ? found.value : null;
   }, [aspectPreset]);
 
   // Helper to compute viewport layout coordinates
-  const getLayout = useCallback(() => {
+  const getLayout = useCallback((): ViewportLayout => {
     const canvas = canvasRef.current;
     if (!canvas || effDimensions.width === 0 || effDimensions.height === 0) {
       return { scale: 1, imgX: 0, imgY: 0, viewportWidth: 0, viewportHeight: 0 };
@@ -173,7 +219,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
 
   // Transform coordinates between Viewport Space and Image Space
   const viewportToImage = useCallback(
-    (vx: number, vy: number) => {
+    (vx: number, vy: number): Point => {
       const { scale, imgX, imgY } = getLayout();
       return {
         x: (vx - imgX) / scale,
@@ -184,7 +230,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   );
 
   const imageToViewport = useCallback(
-    (ix: number, iy: number) => {
+    (ix: number, iy: number): Point => {
       const { scale, imgX, imgY } = getLayout();
       return {
         x: imgX + ix * scale,
@@ -195,7 +241,10 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
   );
 
   // Return handle positions in Viewport pixels
-  const getHandlePositions = useCallback(() => {
+  const getHandlePositions = useCallback((): Record<
+    HandleType,
+    { x: number; y: number; cursor: string }
+  > => {
     const tl = imageToViewport(crop.x, crop.y);
     const br = imageToViewport(crop.x + crop.width, crop.y + crop.height);
     const mx = (tl.x + br.x) / 2;
@@ -210,7 +259,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
       s: { x: mx, y: br.y, cursor: 'ns-resize' },
       sw: { x: tl.x, y: br.y, cursor: 'nesw-resize' },
       w: { x: tl.x, y: my, cursor: 'ew-resize' },
-    } as Record<HandleType, { x: number; y: number; cursor: string }>;
+    };
   }, [crop, imageToViewport]);
 
   // Main Canvas Render Loop
@@ -245,18 +294,11 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     ctx.rect(imgX, imgY, renderedW, renderedH);
     ctx.clip();
 
-    const patternCanvas = document.createElement('canvas');
-    patternCanvas.width = 16;
-    patternCanvas.height = 16;
-    const pCtx = patternCanvas.getContext('2d')!;
-    pCtx.fillStyle = '#e2e4e9';
-    pCtx.fillRect(0, 0, 8, 8);
-    pCtx.fillRect(8, 8, 8, 8);
-    pCtx.fillStyle = '#ffffff';
-    pCtx.fillRect(8, 0, 8, 8);
-    pCtx.fillRect(0, 8, 8, 8);
-    ctx.fillStyle = ctx.createPattern(patternCanvas, 'repeat')!;
-    ctx.fillRect(imgX, imgY, renderedW, renderedH);
+    const pattern = getCheckerboardPattern(ctx);
+    if (pattern) {
+      ctx.fillStyle = pattern;
+      ctx.fillRect(imgX, imgY, renderedW, renderedH);
+    }
     ctx.restore();
 
     // 2. Draw Transformed Image
@@ -289,12 +331,10 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     const cropH = crop.height * scale;
 
     ctx.save();
-    ctx.fillStyle = 'rgba(15, 23, 42, 0.65)'; // modern dark slate scrim
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.65)';
     ctx.beginPath();
-    // Outer rect: entire canvas
     ctx.rect(0, 0, width, height);
 
-    // Inner cutout: crop box with counter-clockwise winding
     if (cropShape === 'round') {
       const cx = cropTl.x + cropW / 2;
       const cy = cropTl.y + cropH / 2;
@@ -320,14 +360,12 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     ctx.lineWidth = 1;
     ctx.setLineDash([4, 4]);
 
-    // Vertical grid lines
     ctx.beginPath();
     ctx.moveTo(cropTl.x + cropW / 3, cropTl.y);
     ctx.lineTo(cropTl.x + cropW / 3, cropTl.y + cropH);
     ctx.moveTo(cropTl.x + (cropW * 2) / 3, cropTl.y);
     ctx.lineTo(cropTl.x + (cropW * 2) / 3, cropTl.y + cropH);
 
-    // Horizontal grid lines
     ctx.moveTo(cropTl.x, cropTl.y + cropH / 3);
     ctx.lineTo(cropTl.x + cropW, cropTl.y + cropH / 3);
     ctx.moveTo(cropTl.x, cropTl.y + (cropH * 2) / 3);
@@ -335,7 +373,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     ctx.stroke();
     ctx.restore();
 
-    // 5. Crop Box Outline (High contrast white stroke with subtle outer glow)
+    // 5. Crop Box Outline
     ctx.save();
     ctx.strokeStyle = '#ffffff';
     ctx.lineWidth = 2;
@@ -362,56 +400,56 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     const handles = getHandlePositions();
     const cornerBracketLen = 14;
 
-    Object.entries(handles).forEach(([name, pos]) => {
-      ctx.save();
-      ctx.fillStyle = '#ffffff';
-      ctx.strokeStyle = 'hsl(var(--primary))';
-      ctx.lineWidth = 2.5;
-      ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
-      ctx.shadowBlur = 4;
-
-      if (['nw', 'ne', 'se', 'sw'].includes(name)) {
-        // Corner bracket handles
-        ctx.strokeStyle = '#ffffff';
-        ctx.lineWidth = 3.5;
-        ctx.beginPath();
-        if (name === 'nw') {
-          ctx.moveTo(pos.x, pos.y + cornerBracketLen);
-          ctx.lineTo(pos.x, pos.y);
-          ctx.lineTo(pos.x + cornerBracketLen, pos.y);
-        } else if (name === 'ne') {
-          ctx.moveTo(pos.x - cornerBracketLen, pos.y);
-          ctx.lineTo(pos.x, pos.y);
-          ctx.lineTo(pos.x, pos.y + cornerBracketLen);
-        } else if (name === 'se') {
-          ctx.moveTo(pos.x, pos.y - cornerBracketLen);
-          ctx.lineTo(pos.x, pos.y);
-          ctx.lineTo(pos.x - cornerBracketLen, pos.y);
-        } else if (name === 'sw') {
-          ctx.moveTo(pos.x + cornerBracketLen, pos.y);
-          ctx.lineTo(pos.x, pos.y);
-          ctx.lineTo(pos.x, pos.y - cornerBracketLen);
-        }
-        ctx.stroke();
-      } else {
-        // Edge pill handles (n, s, e, w)
-        const isHorizontalPill = name === 'n' || name === 's';
-        const pillW = isHorizontalPill ? 18 : 6;
-        const pillH = isHorizontalPill ? 6 : 18;
+    (Object.entries(handles) as [HandleType, { x: number; y: number; cursor: string }][]).forEach(
+      ([name, pos]) => {
+        ctx.save();
         ctx.fillStyle = '#ffffff';
-        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
-        ctx.lineWidth = 1;
-        ctx.beginPath();
-        if (ctx.roundRect) {
-          ctx.roundRect(pos.x - pillW / 2, pos.y - pillH / 2, pillW, pillH, 3);
+        ctx.strokeStyle = 'hsl(var(--primary))';
+        ctx.lineWidth = 2.5;
+        ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+        ctx.shadowBlur = 4;
+
+        if (['nw', 'ne', 'se', 'sw'].includes(name)) {
+          ctx.strokeStyle = '#ffffff';
+          ctx.lineWidth = 3.5;
+          ctx.beginPath();
+          if (name === 'nw') {
+            ctx.moveTo(pos.x, pos.y + cornerBracketLen);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.lineTo(pos.x + cornerBracketLen, pos.y);
+          } else if (name === 'ne') {
+            ctx.moveTo(pos.x - cornerBracketLen, pos.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.lineTo(pos.x, pos.y + cornerBracketLen);
+          } else if (name === 'se') {
+            ctx.moveTo(pos.x, pos.y - cornerBracketLen);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.lineTo(pos.x - cornerBracketLen, pos.y);
+          } else if (name === 'sw') {
+            ctx.moveTo(pos.x + cornerBracketLen, pos.y);
+            ctx.lineTo(pos.x, pos.y);
+            ctx.lineTo(pos.x, pos.y - cornerBracketLen);
+          }
+          ctx.stroke();
         } else {
-          ctx.rect(pos.x - pillW / 2, pos.y - pillH / 2, pillW, pillH);
+          const isHorizontalPill = name === 'n' || name === 's';
+          const pillW = isHorizontalPill ? 18 : 6;
+          const pillH = isHorizontalPill ? 6 : 18;
+          ctx.fillStyle = '#ffffff';
+          ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+          ctx.lineWidth = 1;
+          ctx.beginPath();
+          if (typeof ctx.roundRect === 'function') {
+            ctx.roundRect(pos.x - pillW / 2, pos.y - pillH / 2, pillW, pillH, 3);
+          } else {
+            ctx.rect(pos.x - pillW / 2, pos.y - pillH / 2, pillW, pillH);
+          }
+          ctx.fill();
+          ctx.stroke();
         }
-        ctx.fill();
-        ctx.stroke();
+        ctx.restore();
       }
-      ctx.restore();
-    });
+    );
 
     ctx.restore();
   }, [
@@ -426,12 +464,10 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     getHandlePositions,
   ]);
 
-  // Redraw when properties change
   useEffect(() => {
     render();
   }, [render]);
 
-  // Window resize observer to keep canvas sharp & responsive
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
@@ -446,20 +482,22 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
 
   // Hit test handles or crop interior
   const getHitTarget = useCallback(
-    (vx: number, vy: number) => {
+    (vx: number, vy: number): HitTarget => {
       const handles = getHandlePositions();
-      for (const [name, pos] of Object.entries(handles)) {
+      for (const [name, pos] of Object.entries(handles) as [
+        HandleType,
+        { x: number; y: number; cursor: string }
+      ][]) {
         const dist = Math.hypot(vx - pos.x, vy - pos.y);
         if (dist <= HANDLE_HIT_RADIUS) {
-          return { type: 'handle' as const, handle: name as HandleType, cursor: pos.cursor };
+          return { type: 'handle', handle: name, cursor: pos.cursor };
         }
       }
 
-      // Check if inside crop box
+      const layout = getLayout();
       const cropTl = imageToViewport(crop.x, crop.y);
-      const { scale } = getLayout();
-      const cropW = crop.width * scale;
-      const cropH = crop.height * scale;
+      const cropW = crop.width * layout.scale;
+      const cropH = crop.height * layout.scale;
 
       if (
         vx >= cropTl.x &&
@@ -467,29 +505,26 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
         vy >= cropTl.y &&
         vy <= cropTl.y + cropH
       ) {
-        return { type: 'crop' as const, cursor: 'move' };
+        return { type: 'crop', cursor: 'move' };
       }
 
-      // Check if inside image
-      const { imgX, imgY } = getLayout();
-      const renderedW = effDimensions.width * scale;
-      const renderedH = effDimensions.height * scale;
+      const renderedW = effDimensions.width * layout.scale;
+      const renderedH = effDimensions.height * layout.scale;
 
       if (
-        vx >= imgX &&
-        vx <= imgX + renderedW &&
-        vy >= imgY &&
-        vy <= imgY + renderedH
+        vx >= layout.imgX &&
+        vx <= layout.imgX + renderedW &&
+        vy >= layout.imgY &&
+        vy <= layout.imgY + renderedH
       ) {
-        return { type: 'image' as const, cursor: 'crosshair' };
+        return { type: 'image', cursor: 'crosshair' };
       }
 
-      return { type: 'outside' as const, cursor: 'default' };
+      return { type: 'outside', cursor: 'default' };
     },
     [getHandlePositions, imageToViewport, crop, getLayout, effDimensions]
   );
 
-  // Mouse / Touch Event Handlers
   const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
     e.currentTarget.setPointerCapture(e.pointerId);
     const rect = e.currentTarget.getBoundingClientRect();
@@ -506,7 +541,6 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     } else if (hit.type === 'crop') {
       setIsDraggingCrop(true);
     } else if (hit.type === 'image') {
-      // Start creating a new crop box from click
       const imgPos = viewportToImage(vx, vy);
       setIsCreatingCrop(true);
       setStartCrop({
@@ -586,11 +620,155 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
     setIsCreatingCrop(false);
   };
 
+  // Aspect ratio switch handler
+  const handleAspectChange = useCallback(
+    (aspectId: string) => {
+      setAspectPreset(aspectId);
+      const targetPreset = ASPECT_RATIOS.find((a) => a.id === aspectId);
+      const aspectValue = targetPreset ? targetPreset.value : null;
+
+      setCrop((prev) =>
+        applyAspectToCrop(
+          prev,
+          aspectValue,
+          effDimensions.width,
+          effDimensions.height
+        )
+      );
+    },
+    [effDimensions.width, effDimensions.height]
+  );
+
+  // Rotate handler (90° increments)
+  const handleRotate = useCallback(
+    (dir: 'cw' | 'ccw') => {
+      const delta = dir === 'cw' ? 90 : -90;
+      const newRotate = (transform.rotate + delta + 360) % 360;
+
+      const newEff = getTransformedDimensions(
+        naturalWidth,
+        naturalHeight,
+        newRotate
+      );
+
+      setTransform((prev) => ({ ...prev, rotate: newRotate }));
+
+      const newCrop = getInitialCrop(newEff.width, newEff.height, activeAspect);
+      setCrop(newCrop);
+    },
+    [transform.rotate, naturalWidth, naturalHeight, activeAspect]
+  );
+
+  // Flip handler
+  const handleFlip = useCallback((axis: 'H' | 'V') => {
+    setTransform((prev) => ({
+      ...prev,
+      [axis === 'H' ? 'flipH' : 'flipV']: !prev[axis === 'H' ? 'flipH' : 'flipV'],
+    }));
+  }, []);
+
+  // Reset crop to default bounding selection
+  const handleResetCrop = useCallback(() => {
+    const initial = getInitialCrop(
+      effDimensions.width,
+      effDimensions.height,
+      activeAspect
+    );
+    setCrop(initial);
+    toast({
+      description: 'Crop selection reset.',
+    });
+  }, [effDimensions.width, effDimensions.height, activeAspect, toast]);
+
+  // Maximize crop to entire image
+  const handleMaximizeCrop = useCallback(() => {
+    let newCrop: PixelCrop;
+    if (activeAspect === null) {
+      newCrop = {
+        x: 0,
+        y: 0,
+        width: effDimensions.width,
+        height: effDimensions.height,
+      };
+    } else {
+      newCrop = getInitialCrop(
+        effDimensions.width,
+        effDimensions.height,
+        activeAspect
+      );
+    }
+    setCrop(newCrop);
+  }, [effDimensions.width, effDimensions.height, activeAspect]);
+
+  // Generate cropped output canvas helper
+  const getRenderedCroppedCanvas = useCallback((): HTMLCanvasElement | null => {
+    const img = imageElementRef.current;
+    if (!img || !imageLoaded) return null;
+    return createCroppedCanvas(img, crop, transform, cropShape);
+  }, [crop, transform, cropShape, imageLoaded]);
+
+  // Open Preview Modal
+  const handleOpenPreview = useCallback(() => {
+    const canvas = getRenderedCroppedCanvas();
+    if (!canvas) return;
+    setPreviewCanvas(canvas);
+    setPreviewOpen(true);
+  }, [getRenderedCroppedCanvas]);
+
+  // Direct Download with format
+  const handleExport = useCallback(
+    (format: ExportFormat = 'png') => {
+      const canvas = getRenderedCroppedCanvas();
+      if (!canvas) return;
+
+      const dataUrl = getCanvasDataUrl(canvas, format, 0.92);
+      const filename = formatExportFilename(
+        imageFile.name,
+        crop.width,
+        crop.height,
+        format
+      );
+      downloadFile(dataUrl, filename);
+      toast({
+        title: 'Downloaded!',
+        description: `Saved ${filename}`,
+      });
+    },
+    [getRenderedCroppedCanvas, imageFile.name, crop.width, crop.height, toast]
+  );
+
+  // Instant Copy
+  const handleCopyCrop = useCallback(async () => {
+    const canvas = getRenderedCroppedCanvas();
+    if (!canvas) return;
+
+    try {
+      setIsCopying(true);
+      await copyCanvasToClipboard(canvas);
+      setCopiedSuccess(true);
+      toast({
+        title: 'Success!',
+        description: `Cropped image (${Math.round(crop.width)}×${Math.round(
+          crop.height
+        )}) copied to clipboard.`,
+      });
+      setTimeout(() => setCopiedSuccess(false), 2000);
+    } catch (err) {
+      console.error(err);
+      toast({
+        title: 'Copy Failed',
+        description: 'Could not copy to clipboard in this browser.',
+        variant: 'destructive',
+      });
+    } finally {
+      setIsCopying(false);
+    }
+  }, [getRenderedCroppedCanvas, crop.width, crop.height, toast]);
+
   // Keyboard navigation for nudge / shortcuts
   useEffect(() => {
     const handleKeyDown = (e: KeyboardEvent) => {
       if (!imageLoaded) return;
-      // If typing in an input, ignore
       if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
 
       const step = e.shiftKey ? 10 : 1;
@@ -606,7 +784,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
         return;
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
         e.preventDefault();
-        handleCopyCrop();
+        void handleCopyCrop();
         return;
       } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
         e.preventDefault();
@@ -636,159 +814,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
 
     window.addEventListener('keydown', handleKeyDown);
     return () => window.removeEventListener('keydown', handleKeyDown);
-  }, [imageLoaded, effDimensions]);
-
-  // Aspect ratio switch handler
-  const handleAspectChange = (aspectId: string) => {
-    setAspectPreset(aspectId);
-    const targetPreset = ASPECT_RATIOS.find((a) => a.id === aspectId);
-    const aspectValue = targetPreset ? targetPreset.value : null;
-
-    setCrop((prev) =>
-      applyAspectToCrop(
-        prev,
-        aspectValue,
-        effDimensions.width,
-        effDimensions.height
-      )
-    );
-  };
-
-  // Rotate handler (90° increments)
-  const handleRotate = (dir: 'cw' | 'ccw') => {
-    const delta = dir === 'cw' ? 90 : -90;
-    const newRotate = (transform.rotate + delta + 360) % 360;
-
-    const newEff = getTransformedDimensions(
-      naturalWidth,
-      naturalHeight,
-      newRotate
-    );
-
-    setTransform((prev) => ({ ...prev, rotate: newRotate }));
-
-    // Reset crop to center of new orientation
-    const newCrop = getInitialCrop(newEff.width, newEff.height, activeAspect);
-    setCrop(newCrop);
-  };
-
-  // Flip handlers
-  const handleFlipH = () => {
-    setTransform((prev) => ({ ...prev, flipH: !prev.flipH }));
-  };
-
-  const handleFlipV = () => {
-    setTransform((prev) => ({ ...prev, flipV: !prev.flipV }));
-  };
-
-  // Reset crop to full or initial size
-  const handleResetCrop = () => {
-    const initial = getInitialCrop(
-      effDimensions.width,
-      effDimensions.height,
-      activeAspect
-    );
-    setCrop(initial);
-    toast({
-      description: 'Crop selection reset.',
-    });
-  };
-
-  // Full reset (crop + transforms + zoom)
-  const handleFullReset = () => {
-    setTransform({ rotate: 0, flipH: false, flipV: false });
-    setZoom(1);
-    setPanOffset({ x: 0, y: 0 });
-    setAspectPreset('free');
-    setCropShape('rect');
-    const initial = getInitialCrop(naturalWidth, naturalHeight, null);
-    setCrop(initial);
-    toast({
-      description: 'Image and crop completely reset.',
-    });
-  };
-
-  // Maximize crop to entire image
-  const handleMaximizeCrop = () => {
-    let newCrop: PixelCrop;
-    if (activeAspect === null) {
-      newCrop = {
-        x: 0,
-        y: 0,
-        width: effDimensions.width,
-        height: effDimensions.height,
-      };
-    } else {
-      newCrop = getInitialCrop(
-        effDimensions.width,
-        effDimensions.height,
-        activeAspect
-      );
-    }
-    setCrop(newCrop);
-  };
-
-  // Generate cropped output canvas helper
-  const getRenderedCroppedCanvas = useCallback(() => {
-    const img = imageElementRef.current;
-    if (!img || !imageLoaded) return null;
-    return createCroppedCanvas(img, crop, transform, cropShape);
-  }, [crop, transform, cropShape, imageLoaded]);
-
-  // Open Preview Modal
-  const handleOpenPreview = () => {
-    const canvas = getRenderedCroppedCanvas();
-    if (!canvas) return;
-    setPreviewCanvas(canvas);
-    setPreviewOpen(true);
-  };
-
-  // Instant Copy
-  const handleCopyCrop = async () => {
-    const canvas = getRenderedCroppedCanvas();
-    if (!canvas) return;
-
-    try {
-      setIsCopying(true);
-      await copyCanvasToClipboard(canvas);
-      setCopiedSuccess(true);
-      toast({
-        title: 'Success!',
-        description: `Cropped image (${Math.round(crop.width)}×${Math.round(
-          crop.height
-        )}) copied to clipboard.`,
-      });
-      setTimeout(() => setCopiedSuccess(false), 2000);
-    } catch (err) {
-      console.error(err);
-      toast({
-        title: 'Copy Failed',
-        description: 'Could not copy to clipboard in this browser.',
-        variant: 'destructive',
-      });
-    } finally {
-      setIsCopying(false);
-    }
-  };
-
-  // Direct Download with format
-  const handleExport = (format: ExportFormat = 'png') => {
-    const canvas = getRenderedCroppedCanvas();
-    if (!canvas) return;
-
-    const dataUrl = getCanvasDataUrl(canvas, format, 0.92);
-    const filename = formatExportFilename(
-      imageFile.name,
-      crop.width,
-      crop.height,
-      format
-    );
-    downloadFile(dataUrl, filename);
-    toast({
-      title: 'Downloaded!',
-      description: `Saved ${filename}`,
-    });
-  };
+  }, [imageLoaded, effDimensions, handleResetCrop, handleCopyCrop, handleExport]);
 
   return (
     <div className="w-full flex flex-col gap-4 max-w-7xl mx-auto h-[calc(100vh-6rem)]">
@@ -841,12 +867,18 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
           <TooltipProvider>
             <Tooltip>
               <TooltipTrigger asChild>
-                <Button variant="ghost" size="sm" onClick={handleResetCrop} className="gap-1 text-xs">
+                <Button
+                  variant="ghost"
+                  size="sm"
+                  onClick={handleResetCrop}
+                  className="gap-1 text-xs"
+                  aria-label="Reset crop box"
+                >
                   <RefreshCw className="w-3.5 h-3.5" />
                   <span className="hidden sm:inline">Reset</span>
                 </Button>
               </TooltipTrigger>
-              <TooltipContent>Reset crop box to full</TooltipContent>
+              <TooltipContent>Reset crop box to initial frame</TooltipContent>
             </Tooltip>
           </TooltipProvider>
 
@@ -977,6 +1009,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                     size="icon"
                     className="h-7 w-7"
                     onClick={() => handleRotate('ccw')}
+                    aria-label="Rotate counter-clockwise 90 degrees"
                   >
                     <RotateCcw className="w-3.5 h-3.5" />
                   </Button>
@@ -991,6 +1024,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                     size="icon"
                     className="h-7 w-7"
                     onClick={() => handleRotate('cw')}
+                    aria-label="Rotate clockwise 90 degrees"
                   >
                     <RotateCw className="w-3.5 h-3.5" />
                   </Button>
@@ -1004,7 +1038,8 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                     variant="ghost"
                     size="icon"
                     className={`h-7 w-7 ${transform.flipH ? 'bg-primary/20 text-primary' : ''}`}
-                    onClick={handleFlipH}
+                    onClick={() => handleFlip('H')}
+                    aria-label="Flip horizontally"
                   >
                     <FlipHorizontal className="w-3.5 h-3.5" />
                   </Button>
@@ -1018,7 +1053,8 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                     variant="ghost"
                     size="icon"
                     className={`h-7 w-7 ${transform.flipV ? 'bg-primary/20 text-primary' : ''}`}
-                    onClick={handleFlipV}
+                    onClick={() => handleFlip('V')}
+                    aria-label="Flip vertically"
                   >
                     <FlipVertical className="w-3.5 h-3.5" />
                   </Button>
@@ -1038,8 +1074,9 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
               max={2.5}
               step={0.1}
               value={[zoom]}
-              onValueChange={([val]) => setZoom(val)}
+              onValueChange={([val = 1]) => setZoom(val)}
               className="w-20"
+              aria-label="Zoom level"
             />
             <ZoomIn className="w-3.5 h-3.5 text-muted-foreground" />
             <span className="text-[11px] font-mono text-muted-foreground w-8 text-right">
@@ -1054,6 +1091,7 @@ export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
                 setPanOffset({ x: 0, y: 0 });
               }}
               title="Fit to view"
+              aria-label="Fit to view"
             >
               <Maximize2 className="w-3 h-3" />
             </Button>

@@ -6,63 +6,87 @@ import { Upload, ImageIcon } from 'lucide-react';
 import { useToast } from '@/hooks/use-toast';
 import { cn } from '@/lib/utils';
 
-interface FileUploaderProps {
+export interface FileUploaderProps {
+  /** Callback fired when a valid image file is selected or dropped */
   onFileSelect: (file: File) => void;
 }
 
-const ACCEPTED_TYPES = ['PNG', 'JPG', 'JPEG', 'WEBP', 'GIF', 'AVIF', 'TIFF', 'BMP'];
+const ACCEPTED_TYPES: readonly string[] = [
+  'PNG',
+  'JPG',
+  'JPEG',
+  'WEBP',
+  'GIF',
+  'AVIF',
+  'TIFF',
+  'BMP',
+] as const;
 
+/**
+ * Prevents default event behavior and stops bubbling.
+ */
+function preventAndStop(e: React.SyntheticEvent): void {
+  e.preventDefault();
+  e.stopPropagation();
+}
+
+/**
+ * Drag-and-drop and click-to-upload area for selecting local image files.
+ * Validates that selected files are valid image types before proceeding.
+ */
 export function FileUploader({ onFileSelect }: FileUploaderProps) {
   const [isDragging, setIsDragging] = useState(false);
   const { toast } = useToast();
 
   const handleFile = useCallback(
     (file: File | null | undefined) => {
-      if (file) {
-        if (file.type.startsWith('image/')) {
-          onFileSelect(file);
-        } else {
-          toast({
-            title: 'Invalid File Type',
-            description: 'Please upload an image file (PNG, JPG, WEBP, etc.).',
-            variant: 'destructive',
-          });
-        }
+      if (!file) return;
+
+      if (file.type.startsWith('image/')) {
+        onFileSelect(file);
+      } else {
+        toast({
+          title: 'Invalid File Type',
+          description: 'Please upload an image file (PNG, JPG, WEBP, etc.).',
+          variant: 'destructive',
+        });
       }
     },
     [onFileSelect, toast]
   );
 
-  const handleDragEnter = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDragEnter = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    preventAndStop(e);
     setIsDragging(true);
-  };
+  }, []);
 
-  const handleDragLeave = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDragLeave = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    preventAndStop(e);
     setIsDragging(false);
-  };
+  }, []);
 
-  const handleDragOver = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
+  const handleDragOver = useCallback((e: React.DragEvent<HTMLDivElement>) => {
+    preventAndStop(e);
     e.dataTransfer.dropEffect = 'copy';
-  };
+  }, []);
 
-  const handleDrop = (e: React.DragEvent<HTMLDivElement>) => {
-    e.preventDefault();
-    e.stopPropagation();
-    setIsDragging(false);
-    const file = e.dataTransfer.files?.[0];
-    handleFile(file);
-  };
+  const handleDrop = useCallback(
+    (e: React.DragEvent<HTMLDivElement>) => {
+      preventAndStop(e);
+      setIsDragging(false);
+      const file = e.dataTransfer.files[0];
+      handleFile(file);
+    },
+    [handleFile]
+  );
 
-  const handleFileChange = (e: React.ChangeEvent<HTMLInputElement>) => {
-    const file = e.target.files?.[0];
-    handleFile(file);
-  };
+  const handleFileChange = useCallback(
+    (e: React.ChangeEvent<HTMLInputElement>) => {
+      const file = e.target.files?.[0];
+      handleFile(file);
+    },
+    [handleFile]
+  );
 
   return (
     <div

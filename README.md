@@ -52,11 +52,32 @@ Crop, rotate, flip, and export images at full native resolution with no uploads,
 - No server, no cloud, no analytics on your images
 - Works fully offline once the page loads
 
-### ✨ Other Niceties
+### Additional Features
 - Dark / Light mode
 - Keyboard shortcuts: Arrow keys to nudge (Shift × 10px), `Cmd/Ctrl+C` to copy, `Cmd/Ctrl+S` to save
 - Responsive layout — works on desktop and mobile
 - **Preview modal** before saving: see exact output with format and quality options
+
+---
+
+## Architecture & Code Quality
+
+Canvas Crop follows **SOLID** and **DRY** design principles:
+
+- **Single Responsibility Principle (SRP)**:
+  - `src/lib/crop-utils.ts`: Pure mathematics, geometry coordinate transformations, and canvas export pipeline. Contains no UI or React dependencies.
+  - `src/components/image-editor.tsx`: Coordinates pointer/touch events, canvas drawing, and interactive state.
+  - `src/components/file-uploader.tsx`: Handles drag-and-drop validation and file ingestion.
+  - `src/components/crop/crop-preview-dialog.tsx`: Presentation dialog for final image export and clipboard actions.
+- **Open/Closed Principle (OCP)**:
+  - `ASPECT_RATIOS` and `EXPORT_FORMATS` presets are configuration arrays that can be extended without altering the core math engine.
+- **Don't Repeat Yourself (DRY)**:
+  - Aspect ratio resolution (`resolveAspectRatio`) is centralized, eliminating duplicate branch logic across crop initialization, ratio switching, and handle dragging.
+  - MIME type lookups (`formatToMimeType`) and export filename generation (`formatExportFilename`) are shared across preview and direct download paths.
+  - Event suppression and pointer handling are unified in utility helpers.
+- **Strict TypeScript**:
+  - Configured with `strict: true`, `noUncheckedIndexedAccess: true`, and `noImplicitOverride: true`.
+  - Comprehensive JSDoc annotations across all public functions, types, and component props.
 
 ---
 
@@ -79,6 +100,13 @@ npm install
 
 # Start the dev server (runs on http://localhost:9002)
 npm run dev
+```
+
+### Type Checking & Linting
+
+```bash
+# Run strict TypeScript type checks
+npx tsc --noEmit
 ```
 
 ### Dockerised Development
@@ -120,33 +148,34 @@ Compatible with **Vercel**, **Netlify**, **Firebase App Hosting**, **Cloudflare 
 
 ```
 canvas-crop/
-├── public/                      # Static assets (icons, manifest)
+├── public/                       # Static assets (icons, manifest)
 ├── src/
 │   ├── app/
-│   │   ├── changelog/           # Changelog page
-│   │   ├── legal/               # Terms, Privacy, DMCA, Cookie, etc.
-│   │   ├── globals.css          # Design tokens & animations
-│   │   ├── layout.tsx           # Root layout + SEO metadata
-│   │   └── page.tsx             # Landing page & editor shell
+│   │   ├── changelog/            # Changelog page
+│   │   ├── legal/                # Terms, Privacy, DMCA, Cookie, etc.
+│   │   ├── globals.css           # Design tokens & animations
+│   │   ├── layout.tsx            # Root layout + SEO metadata
+│   │   └── page.tsx              # Landing page & editor shell
 │   ├── components/
 │   │   ├── crop/
 │   │   │   └── crop-preview-dialog.tsx  # Export preview modal
-│   │   ├── ui/                  # Radix-based shadcn/ui primitives
-│   │   ├── file-uploader.tsx    # Drag-and-drop upload zone
-│   │   ├── image-editor.tsx     # Core crop studio (canvas-based)
-│   │   ├── footerCopyright.tsx  # Footer with legal links
-│   │   ├── theme-provider.tsx   # next-themes wrapper
-│   │   └── theme-toggle.tsx     # Dark / Light switch
+│   │   ├── ui/                   # Radix-based shadcn/ui primitives
+│   │   ├── file-uploader.tsx     # Drag-and-drop upload zone
+│   │   ├── footer-copyright.tsx  # Footer with legal links & attribution
+│   │   ├── image-editor.tsx      # Core crop studio (canvas-based)
+│   │   ├── theme-provider.tsx    # next-themes wrapper
+│   │   └── theme-toggle.tsx      # Dark / Light switch
 │   ├── hooks/
-│   │   └── use-toast.ts         # Toast notification hook
+│   │   └── use-toast.ts          # Toast notification hook
 │   └── lib/
-│       ├── crop-utils.ts        # Geometry math, transforms & canvas export
-│       └── utils.ts             # Tailwind class merge (cn)
-├── Dockerfile.dev               # Dev container configuration
-├── Dockerfile.prod              # Production container configuration
-├── next.config.ts               # Next.js configuration
-├── tailwind.config.ts           # Tailwind + typography plugin
-└── tsconfig.json                # TypeScript configuration
+│       ├── constants.ts          # App constants (repo, version, author)
+│       ├── crop-utils.ts         # Geometry math, transforms & canvas export
+│       └── utils.ts              # Tailwind class merge (cn)
+├── Dockerfile.dev                # Dev container configuration
+├── Dockerfile.prod               # Production container configuration
+├── next.config.ts                # Next.js configuration
+├── tailwind.config.ts            # Tailwind + typography plugin
+└── tsconfig.json                 # TypeScript configuration (strict)
 ```
 
 ---
