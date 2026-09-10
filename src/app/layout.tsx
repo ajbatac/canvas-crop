@@ -8,8 +8,16 @@ import { ThemeProvider } from '@/components/theme-provider';
 const inter = Inter({ subsets: ['latin'], variable: '--font-sans' });
 
 export const metadata: Metadata = {
-  title: 'Canvas Crop - Image Resizer',
-  description: 'Resize and crop images with ease.',
+  title: 'Canvas Crop — Free Online Image Cropping Tool',
+  description:
+    'Crop, rotate, flip, and export images in PNG, JPEG, or WebP — entirely in your browser. No uploads. No account. 100% private.',
+  keywords: 'image cropper, crop image online, aspect ratio crop, circle crop avatar, free image editor, privacy, no upload',
+  openGraph: {
+    title: 'Canvas Crop — Free Online Image Cropping Tool',
+    description:
+      'Crop, rotate, and export images — entirely in your browser. No uploads, no tracking.',
+    type: 'website',
+  },
 };
 
 export default function RootLayout({

@@ -14,7 +14,7 @@ export default {
         headline: ['Inter', 'sans-serif'],
         code: ['monospace'],
       },
-      typography: ({ theme }) => ({
+      typography: ({ theme }: { theme: (path: string) => string }) => ({
         DEFAULT: {
           css: {
             'h1, h2, h3, h4, h5, h6': {

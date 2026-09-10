@@ -1,527 +1,1073 @@
 'use client';
 
-import type React from 'react';
-import { useState, useRef, useEffect, useCallback } from 'react';
+import React, { useState, useRef, useEffect, useCallback } from 'react';
 import { useToast } from '@/hooks/use-toast';
 import { Button } from '@/components/ui/button';
-import { Card } from '@/components/ui/card';
 import { Slider } from '@/components/ui/slider';
+import { Badge } from '@/components/ui/badge';
 import {
-  Copy,
-  Download,
-  ZoomIn,
-  ZoomOut,
-  Trash2,
-} from 'lucide-react';
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuTrigger,
+} from '@/components/ui/dropdown-menu';
 import {
   Tooltip,
   TooltipContent,
   TooltipProvider,
   TooltipTrigger,
 } from '@/components/ui/tooltip';
-
-const HANDLE_SIZE = 16; // Increased for better touch interaction
-const MIN_DIMENSION = 50;
+import {
+  Crop as CropIcon,
+  RotateCw,
+  RotateCcw,
+  FlipHorizontal,
+  FlipVertical,
+  ZoomIn,
+  ZoomOut,
+  Maximize2,
+  Copy,
+  Download,
+  Trash2,
+  Eye,
+  Check,
+  Circle,
+  Square,
+  ChevronDown,
+  RefreshCw,
+} from 'lucide-react';
+import {
+  PixelCrop,
+  HandleType,
+  CropShape,
+  ExportFormat,
+  ImageTransform,
+  ASPECT_RATIOS,
+  getTransformedDimensions,
+  getInitialCrop,
+  clampCrop,
+  applyAspectToCrop,
+  resizeCropWithHandle,
+  createCroppedCanvas,
+  copyCanvasToClipboard,
+  downloadFile,
+  getCanvasDataUrl,
+  formatExportFilename,
+  formatBytes,
+} from '@/lib/crop-utils';
+import { CropPreviewDialog } from '@/components/crop/crop-preview-dialog';
 
 interface ImageEditorProps {
   imageFile: File;
   onNewImage: () => void;
 }
 
+const HANDLE_VISUAL_SIZE = 12;
+const HANDLE_HIT_RADIUS = 20;
+
 export function ImageEditor({ imageFile, onNewImage }: ImageEditorProps) {
-  const canvasRef = useRef<HTMLCanvasElement>(null);
-  const containerRef = useRef<HTMLDivElement>(null);
-  const imageRef = useRef<HTMLImageElement>(new Image());
-  const [zoom, setZoom] = useState(1);
   const { toast } = useToast();
 
-  const [imageRect, setImageRect] = useState({ x: 0, y: 0, width: 0, height: 0 });
-  const [activeHandle, setActiveHandle] = useState<string | null>(null);
-  const [hoveredHandle, setHoveredHandle] = useState<string | null>(null);
-  const [isPanning, setIsPanning] = useState(false);
-  const [lastPos, setLastPos] = useState({ x: 0, y: 0 });
-  const [cursor, setCursor] = useState('grab');
+  const containerRef = useRef<HTMLDivElement>(null);
+  const canvasRef = useRef<HTMLCanvasElement>(null);
+  const imageElementRef = useRef<HTMLImageElement | null>(null);
 
-  const getHandles = useCallback(() => {
-    const { x, y, width, height } = imageRect;
-    return {
-      topLeft: { x, y },
-      topRight: { x: x + width, y },
-      bottomLeft: { x, y: y + height },
-      bottomRight: { x: x + width, y: y + height },
-    };
-  }, [imageRect]);
+  // Loaded image natural state
+  const [imageLoaded, setImageLoaded] = useState(false);
+  const [naturalWidth, setNaturalWidth] = useState(0);
+  const [naturalHeight, setNaturalHeight] = useState(0);
 
-  const redrawCanvas = useCallback(() => {
-    const canvas = canvasRef.current;
-    const ctx = canvas?.getContext('2d');
-    const img = imageRef.current;
-    if (!canvas || !ctx || !img.src) return;
+  // Transform state
+  const [transform, setTransform] = useState<ImageTransform>({
+    rotate: 0,
+    flipH: false,
+    flipV: false,
+  });
 
-    ctx.clearRect(0, 0, canvas.width, canvas.height);
+  // Effective dimensions based on rotation
+  const effDimensions = getTransformedDimensions(
+    naturalWidth,
+    naturalHeight,
+    transform.rotate
+  );
 
-    // Draw a checkerboard pattern for transparency
-    const patternCanvas = document.createElement('canvas');
-    const patternCtx = patternCanvas.getContext('2d')!;
-    patternCanvas.width = 20;
-    patternCanvas.height = 20;
-    patternCtx.fillStyle = '#e0e0e0';
-    patternCtx.fillRect(0, 0, 10, 10);
-    patternCtx.fillRect(10, 10, 10, 10);
-    patternCtx.fillStyle = '#f0f0f0';
-    patternCtx.fillRect(0, 10, 10, 10);
-    patternCtx.fillRect(10, 0, 10, 10);
-    const pattern = ctx.createPattern(patternCanvas, 'repeat')!;
-    ctx.fillStyle = pattern;
-    ctx.fillRect(0, 0, canvas.width, canvas.height);
+  // Crop configuration
+  const [aspectPreset, setAspectPreset] = useState<string>('free');
+  const [cropShape, setCropShape] = useState<CropShape>('rect');
+  const [crop, setCrop] = useState<PixelCrop>({ x: 0, y: 0, width: 0, height: 0 });
 
+  // Viewport Zoom & Pan
+  const [zoom, setZoom] = useState<number>(1);
+  const [panOffset, setPanOffset] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
 
-    ctx.drawImage(img, imageRect.x, imageRect.y, imageRect.width, imageRect.height);
-    
-    // Draw border and handles
-    if (hoveredHandle) {
-      ctx.strokeStyle = 'hsl(var(--primary))';
-      ctx.lineWidth = 2;
-    } else {
-      ctx.strokeStyle = 'hsl(var(--border))';
-      ctx.lineWidth = 1;
-    }
-    ctx.strokeRect(imageRect.x, imageRect.y, imageRect.width, imageRect.height);
+  // Interactive interaction states
+  const [activeHandle, setActiveHandle] = useState<HandleType | null>(null);
+  const [isDraggingCrop, setIsDraggingCrop] = useState(false);
+  const [isCreatingCrop, setIsCreatingCrop] = useState(false);
+  const [dragStartPos, setDragStartPos] = useState<{ x: number; y: number }>({ x: 0, y: 0 });
+  const [startCrop, setStartCrop] = useState<PixelCrop>({ x: 0, y: 0, width: 0, height: 0 });
+  const [cursor, setCursor] = useState<string>('default');
 
-    ctx.fillStyle = 'hsl(var(--accent))';
-    
-    Object.entries(getHandles()).forEach(([name, handle]) => {
-      ctx.strokeStyle = 'hsl(var(--primary))';
-      ctx.lineWidth = name === hoveredHandle ? 4 : 2;
-      ctx.beginPath();
-      if (ctx.roundRect) {
-        ctx.roundRect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE, [4]);
-      } else {
-        // Fallback for older browsers
-        ctx.rect(handle.x - HANDLE_SIZE / 2, handle.y - HANDLE_SIZE / 2, HANDLE_SIZE, HANDLE_SIZE);
-      }
-      ctx.fill();
-      ctx.stroke();
-    });
-  }, [imageRect, getHandles, hoveredHandle]);
+  // Preview Dialog & Actions
+  const [previewOpen, setPreviewOpen] = useState(false);
+  const [previewCanvas, setPreviewCanvas] = useState<HTMLCanvasElement | null>(null);
+  const [isCopying, setIsCopying] = useState(false);
+  const [copiedSuccess, setCopiedSuccess] = useState(false);
 
-  const loadImage = (src: string) => {
-    const img = imageRef.current;
-    const canvas = canvasRef.current;
-    const container = containerRef.current;
-
-    img.onload = () => {
-      if (!container || !canvas) return;
-
-      const containerWidth = container.clientWidth;
-      const containerHeight = container.clientHeight;
-      if (containerWidth === 0 || containerHeight === 0) return;
-      
-      canvas.width = containerWidth;
-      canvas.height = containerHeight;
-
-      const containerAR = containerWidth / containerHeight;
-      const imgAR = img.width / img.height;
-      
-      let newWidth, newHeight;
-      if (imgAR > containerAR) {
-        newWidth = containerWidth * 0.8;
-        newHeight = newWidth / imgAR;
-      } else {
-        newHeight = containerHeight * 0.8;
-        newWidth = newHeight * imgAR;
-      }
-
-      const newX = (containerWidth - newWidth) / 2;
-      const newY = (containerHeight - newHeight) / 2;
-
-      setImageRect({ x: newX, y: newY, width: newWidth, height: newHeight });
-      setZoom(1);
-    };
-    img.src = src;
-  };
-
+  // Load image from File
   useEffect(() => {
-    const reader = new FileReader();
-    reader.onload = (e) => loadImage(e.target?.result as string);
-    reader.readAsDataURL(imageFile);
+    const img = new Image();
+    const objectUrl = URL.createObjectURL(imageFile);
+    img.onload = () => {
+      imageElementRef.current = img;
+      setNaturalWidth(img.naturalWidth);
+      setNaturalHeight(img.naturalHeight);
+      setTransform({ rotate: 0, flipH: false, flipV: false });
+      setZoom(1);
+      setPanOffset({ x: 0, y: 0 });
+      setAspectPreset('free');
+      setCropShape('rect');
+
+      const initial = getInitialCrop(img.naturalWidth, img.naturalHeight, null);
+      setCrop(initial);
+      setImageLoaded(true);
+    };
+    img.src = objectUrl;
+
+    return () => {
+      URL.revokeObjectURL(objectUrl);
+    };
   }, [imageFile]);
 
+  // Current active aspect ratio value
+  const activeAspect = React.useMemo(() => {
+    const found = ASPECT_RATIOS.find((a) => a.id === aspectPreset);
+    return found ? found.value : null;
+  }, [aspectPreset]);
+
+  // Helper to compute viewport layout coordinates
+  const getLayout = useCallback(() => {
+    const canvas = canvasRef.current;
+    if (!canvas || effDimensions.width === 0 || effDimensions.height === 0) {
+      return { scale: 1, imgX: 0, imgY: 0, viewportWidth: 0, viewportHeight: 0 };
+    }
+
+    const viewportWidth = canvas.clientWidth;
+    const viewportHeight = canvas.clientHeight;
+    const padding = 36;
+
+    const availW = Math.max(50, viewportWidth - padding * 2);
+    const availH = Math.max(50, viewportHeight - padding * 2);
+
+    const fitScale = Math.min(availW / effDimensions.width, availH / effDimensions.height);
+    const scale = fitScale * zoom;
+
+    const renderedW = effDimensions.width * scale;
+    const renderedH = effDimensions.height * scale;
+
+    const imgX = (viewportWidth - renderedW) / 2 + panOffset.x;
+    const imgY = (viewportHeight - renderedH) / 2 + panOffset.y;
+
+    return { scale, imgX, imgY, viewportWidth, viewportHeight };
+  }, [effDimensions, zoom, panOffset]);
+
+  // Transform coordinates between Viewport Space and Image Space
+  const viewportToImage = useCallback(
+    (vx: number, vy: number) => {
+      const { scale, imgX, imgY } = getLayout();
+      return {
+        x: (vx - imgX) / scale,
+        y: (vy - imgY) / scale,
+      };
+    },
+    [getLayout]
+  );
+
+  const imageToViewport = useCallback(
+    (ix: number, iy: number) => {
+      const { scale, imgX, imgY } = getLayout();
+      return {
+        x: imgX + ix * scale,
+        y: imgY + iy * scale,
+      };
+    },
+    [getLayout]
+  );
+
+  // Return handle positions in Viewport pixels
+  const getHandlePositions = useCallback(() => {
+    const tl = imageToViewport(crop.x, crop.y);
+    const br = imageToViewport(crop.x + crop.width, crop.y + crop.height);
+    const mx = (tl.x + br.x) / 2;
+    const my = (tl.y + br.y) / 2;
+
+    return {
+      nw: { x: tl.x, y: tl.y, cursor: 'nwse-resize' },
+      n: { x: mx, y: tl.y, cursor: 'ns-resize' },
+      ne: { x: br.x, y: tl.y, cursor: 'nesw-resize' },
+      e: { x: br.x, y: my, cursor: 'ew-resize' },
+      se: { x: br.x, y: br.y, cursor: 'nwse-resize' },
+      s: { x: mx, y: br.y, cursor: 'ns-resize' },
+      sw: { x: tl.x, y: br.y, cursor: 'nesw-resize' },
+      w: { x: tl.x, y: my, cursor: 'ew-resize' },
+    } as Record<HandleType, { x: number; y: number; cursor: string }>;
+  }, [crop, imageToViewport]);
+
+  // Main Canvas Render Loop
+  const render = useCallback(() => {
+    const canvas = canvasRef.current;
+    const img = imageElementRef.current;
+    if (!canvas || !img || !imageLoaded) return;
+
+    const ctx = canvas.getContext('2d');
+    if (!ctx) return;
+
+    const dpr = window.devicePixelRatio || 1;
+    const width = canvas.clientWidth;
+    const height = canvas.clientHeight;
+
+    if (canvas.width !== width * dpr || canvas.height !== height * dpr) {
+      canvas.width = width * dpr;
+      canvas.height = height * dpr;
+    }
+
+    ctx.save();
+    ctx.scale(dpr, dpr);
+    ctx.clearRect(0, 0, width, height);
+
+    const { scale, imgX, imgY } = getLayout();
+    const renderedW = effDimensions.width * scale;
+    const renderedH = effDimensions.height * scale;
+
+    // 1. Draw Checkerboard background inside image boundary for transparent assets
+    ctx.save();
+    ctx.beginPath();
+    ctx.rect(imgX, imgY, renderedW, renderedH);
+    ctx.clip();
+
+    const patternCanvas = document.createElement('canvas');
+    patternCanvas.width = 16;
+    patternCanvas.height = 16;
+    const pCtx = patternCanvas.getContext('2d')!;
+    pCtx.fillStyle = '#e2e4e9';
+    pCtx.fillRect(0, 0, 8, 8);
+    pCtx.fillRect(8, 8, 8, 8);
+    pCtx.fillStyle = '#ffffff';
+    pCtx.fillRect(8, 0, 8, 8);
+    pCtx.fillRect(0, 8, 8, 8);
+    ctx.fillStyle = ctx.createPattern(patternCanvas, 'repeat')!;
+    ctx.fillRect(imgX, imgY, renderedW, renderedH);
+    ctx.restore();
+
+    // 2. Draw Transformed Image
+    ctx.save();
+    ctx.translate(imgX + renderedW / 2, imgY + renderedH / 2);
+    ctx.rotate((transform.rotate * Math.PI) / 180);
+    ctx.scale(transform.flipH ? -1 : 1, transform.flipV ? -1 : 1);
+
+    const isOrthogonal = Math.abs(transform.rotate % 180) === 90;
+    const naturalDrawW = (isOrthogonal ? effDimensions.height : effDimensions.width) * scale;
+    const naturalDrawH = (isOrthogonal ? effDimensions.width : effDimensions.height) * scale;
+
+    ctx.drawImage(
+      img,
+      -naturalDrawW / 2,
+      -naturalDrawH / 2,
+      naturalDrawW,
+      naturalDrawH
+    );
+    ctx.restore();
+
+    // Image border outline
+    ctx.strokeStyle = 'rgba(0, 0, 0, 0.15)';
+    ctx.lineWidth = 1;
+    ctx.strokeRect(imgX, imgY, renderedW, renderedH);
+
+    // 3. Dark Scrim (Mask over non-cropped areas)
+    const cropTl = imageToViewport(crop.x, crop.y);
+    const cropW = crop.width * scale;
+    const cropH = crop.height * scale;
+
+    ctx.save();
+    ctx.fillStyle = 'rgba(15, 23, 42, 0.65)'; // modern dark slate scrim
+    ctx.beginPath();
+    // Outer rect: entire canvas
+    ctx.rect(0, 0, width, height);
+
+    // Inner cutout: crop box with counter-clockwise winding
+    if (cropShape === 'round') {
+      const cx = cropTl.x + cropW / 2;
+      const cy = cropTl.y + cropH / 2;
+      const rx = Math.max(1, cropW / 2);
+      const ry = Math.max(1, cropH / 2);
+      ctx.ellipse(cx, cy, rx, ry, 0, 0, Math.PI * 2, true);
+    } else {
+      ctx.rect(cropTl.x + cropW, cropTl.y, -cropW, cropH);
+    }
+    ctx.fill('evenodd');
+    ctx.restore();
+
+    // 4. Rule-of-Thirds Grid lines
+    ctx.save();
+    ctx.beginPath();
+    if (cropShape === 'round') {
+      const cx = cropTl.x + cropW / 2;
+      const cy = cropTl.y + cropH / 2;
+      ctx.ellipse(cx, cy, cropW / 2, cropH / 2, 0, 0, Math.PI * 2);
+      ctx.clip();
+    }
+    ctx.strokeStyle = 'rgba(255, 255, 255, 0.35)';
+    ctx.lineWidth = 1;
+    ctx.setLineDash([4, 4]);
+
+    // Vertical grid lines
+    ctx.beginPath();
+    ctx.moveTo(cropTl.x + cropW / 3, cropTl.y);
+    ctx.lineTo(cropTl.x + cropW / 3, cropTl.y + cropH);
+    ctx.moveTo(cropTl.x + (cropW * 2) / 3, cropTl.y);
+    ctx.lineTo(cropTl.x + (cropW * 2) / 3, cropTl.y + cropH);
+
+    // Horizontal grid lines
+    ctx.moveTo(cropTl.x, cropTl.y + cropH / 3);
+    ctx.lineTo(cropTl.x + cropW, cropTl.y + cropH / 3);
+    ctx.moveTo(cropTl.x, cropTl.y + (cropH * 2) / 3);
+    ctx.lineTo(cropTl.x + cropW, cropTl.y + (cropH * 2) / 3);
+    ctx.stroke();
+    ctx.restore();
+
+    // 5. Crop Box Outline (High contrast white stroke with subtle outer glow)
+    ctx.save();
+    ctx.strokeStyle = '#ffffff';
+    ctx.lineWidth = 2;
+    ctx.shadowColor = 'rgba(0, 0, 0, 0.6)';
+    ctx.shadowBlur = 4;
+    if (cropShape === 'round') {
+      ctx.beginPath();
+      ctx.ellipse(
+        cropTl.x + cropW / 2,
+        cropTl.y + cropH / 2,
+        cropW / 2,
+        cropH / 2,
+        0,
+        0,
+        Math.PI * 2
+      );
+      ctx.stroke();
+    } else {
+      ctx.strokeRect(cropTl.x, cropTl.y, cropW, cropH);
+    }
+    ctx.restore();
+
+    // 6. Draw 8 Interactive Handles
+    const handles = getHandlePositions();
+    const cornerBracketLen = 14;
+
+    Object.entries(handles).forEach(([name, pos]) => {
+      ctx.save();
+      ctx.fillStyle = '#ffffff';
+      ctx.strokeStyle = 'hsl(var(--primary))';
+      ctx.lineWidth = 2.5;
+      ctx.shadowColor = 'rgba(0, 0, 0, 0.35)';
+      ctx.shadowBlur = 4;
+
+      if (['nw', 'ne', 'se', 'sw'].includes(name)) {
+        // Corner bracket handles
+        ctx.strokeStyle = '#ffffff';
+        ctx.lineWidth = 3.5;
+        ctx.beginPath();
+        if (name === 'nw') {
+          ctx.moveTo(pos.x, pos.y + cornerBracketLen);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.lineTo(pos.x + cornerBracketLen, pos.y);
+        } else if (name === 'ne') {
+          ctx.moveTo(pos.x - cornerBracketLen, pos.y);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.lineTo(pos.x, pos.y + cornerBracketLen);
+        } else if (name === 'se') {
+          ctx.moveTo(pos.x, pos.y - cornerBracketLen);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.lineTo(pos.x - cornerBracketLen, pos.y);
+        } else if (name === 'sw') {
+          ctx.moveTo(pos.x + cornerBracketLen, pos.y);
+          ctx.lineTo(pos.x, pos.y);
+          ctx.lineTo(pos.x, pos.y - cornerBracketLen);
+        }
+        ctx.stroke();
+      } else {
+        // Edge pill handles (n, s, e, w)
+        const isHorizontalPill = name === 'n' || name === 's';
+        const pillW = isHorizontalPill ? 18 : 6;
+        const pillH = isHorizontalPill ? 6 : 18;
+        ctx.fillStyle = '#ffffff';
+        ctx.strokeStyle = 'rgba(0,0,0,0.5)';
+        ctx.lineWidth = 1;
+        ctx.beginPath();
+        if (ctx.roundRect) {
+          ctx.roundRect(pos.x - pillW / 2, pos.y - pillH / 2, pillW, pillH, 3);
+        } else {
+          ctx.rect(pos.x - pillW / 2, pos.y - pillH / 2, pillW, pillH);
+        }
+        ctx.fill();
+        ctx.stroke();
+      }
+      ctx.restore();
+    });
+
+    ctx.restore();
+  }, [
+    effDimensions,
+    transform,
+    zoom,
+    crop,
+    cropShape,
+    imageLoaded,
+    getLayout,
+    imageToViewport,
+    getHandlePositions,
+  ]);
+
+  // Redraw when properties change
+  useEffect(() => {
+    render();
+  }, [render]);
+
+  // Window resize observer to keep canvas sharp & responsive
   useEffect(() => {
     const container = containerRef.current;
     if (!container) return;
 
-    const handleResize = () => {
-        const canvas = canvasRef.current;
-        if (!canvas) return;
+    const observer = new ResizeObserver(() => {
+      render();
+    });
+    observer.observe(container);
 
-        // Sync canvas dimensions with container
-        canvas.width = container.clientWidth;
-        canvas.height = container.clientHeight;
-        
-        // Recalculate image position and size based on new canvas dimensions
-        setImageRect(prevRect => {
-            if (prevRect.width === 0 || prevRect.height === 0) {
-                // This case can happen on initial load before the image is ready.
-                // We'll let the `loadImage` function handle the initial sizing.
-                return prevRect;
-            }
+    return () => observer.disconnect();
+  }, [render]);
 
-            const currentImageAR = prevRect.width / prevRect.height;
-            const containerAR = canvas.width / canvas.height;
-            let newWidth, newHeight;
-            
-            // Fit the image within an 80% bounding box, maintaining its aspect ratio
-            if (currentImageAR > containerAR) {
-                newWidth = canvas.width * 0.8;
-                newHeight = newWidth / currentImageAR;
-            } else {
-                newHeight = canvas.height * 0.8;
-                newWidth = newHeight * currentImageAR;
-            }
-            
-            const newX = (canvas.width - newWidth) / 2;
-            const newY = (canvas.height - newHeight) / 2;
-            
-            return { x: newX, y: newY, width: newWidth, height: newHeight };
-        });
-    };
-    
-    // Use ResizeObserver to detect when the container size changes.
-    const resizeObserver = new ResizeObserver(handleResize);
-    resizeObserver.observe(container);
-
-    // Initial resize to set up the canvas.
-    handleResize();
-
-    return () => {
-      if (container) {
-        resizeObserver.unobserve(container);
-      }
-    };
-  }, []); // Empty dependency array means this runs once on mount.
-
-
-  useEffect(() => {
-    redrawCanvas();
-  }, [imageRect, redrawCanvas]);
-
-  const getEventPos = (e: MouseEvent | TouchEvent | React.MouseEvent | React.TouchEvent) => {
-    const canvas = canvasRef.current;
-    if (!canvas) return { x: 0, y: 0 };
-    const rect = canvas.getBoundingClientRect();
-    const clientX = 'touches' in e ? e.touches[0].clientX : e.clientX;
-    const clientY = 'touches' in e ? e.touches[0].clientY : e.clientY;
-    return { x: clientX - rect.left, y: clientY - rect.top };
-  };
-
-  const handleInteractionStart = (e: React.MouseEvent | React.TouchEvent) => {
-    const pos = getEventPos(e);
-    setLastPos(pos);
-
-    for (const [name, handlePos] of Object.entries(getHandles())) {
-      if (
-        Math.abs(pos.x - handlePos.x) < HANDLE_SIZE &&
-        Math.abs(pos.y - handlePos.y) < HANDLE_SIZE
-      ) {
-        setActiveHandle(name);
-        return;
-      }
-    }
-    
-    if (pos.x >= imageRect.x && pos.x <= imageRect.x + imageRect.width &&
-        pos.y >= imageRect.y && pos.y <= imageRect.y + imageRect.height) {
-        setIsPanning(true);
-        setCursor('grabbing');
-    }
-  };
-
-
-  const handleCanvasMouseMove = (e: React.MouseEvent<HTMLCanvasElement>) => {
-    if (activeHandle || isPanning) return;
-    
-    const pos = getEventPos(e);
-    const handles = getHandles();
-    let newCursor = 'default';
-    let handleUnderCursor: string | null = null;
-    
-    const handleHotspot = HANDLE_SIZE;
-
-    for (const [name, handlePos] of Object.entries(handles)) {
-        if (
-            Math.abs(pos.x - handlePos.x) < handleHotspot &&
-            Math.abs(pos.y - handlePos.y) < handleHotspot
-        ) {
-            handleUnderCursor = name;
-            if (name === 'topLeft' || name === 'bottomRight') {
-                newCursor = 'nwse-resize';
-            } else {
-                newCursor = 'nesw-resize';
-            }
-            break;
+  // Hit test handles or crop interior
+  const getHitTarget = useCallback(
+    (vx: number, vy: number) => {
+      const handles = getHandlePositions();
+      for (const [name, pos] of Object.entries(handles)) {
+        const dist = Math.hypot(vx - pos.x, vy - pos.y);
+        if (dist <= HANDLE_HIT_RADIUS) {
+          return { type: 'handle' as const, handle: name as HandleType, cursor: pos.cursor };
         }
-    }
-
-    if (!handleUnderCursor) {
-      if (
-        pos.x >= imageRect.x && pos.x <= imageRect.x + imageRect.width &&
-        pos.y >= imageRect.y && pos.y <= imageRect.y + imageRect.height
-      ) {
-        newCursor = 'grab';
       }
+
+      // Check if inside crop box
+      const cropTl = imageToViewport(crop.x, crop.y);
+      const { scale } = getLayout();
+      const cropW = crop.width * scale;
+      const cropH = crop.height * scale;
+
+      if (
+        vx >= cropTl.x &&
+        vx <= cropTl.x + cropW &&
+        vy >= cropTl.y &&
+        vy <= cropTl.y + cropH
+      ) {
+        return { type: 'crop' as const, cursor: 'move' };
+      }
+
+      // Check if inside image
+      const { imgX, imgY } = getLayout();
+      const renderedW = effDimensions.width * scale;
+      const renderedH = effDimensions.height * scale;
+
+      if (
+        vx >= imgX &&
+        vx <= imgX + renderedW &&
+        vy >= imgY &&
+        vy <= imgY + renderedH
+      ) {
+        return { type: 'image' as const, cursor: 'crosshair' };
+      }
+
+      return { type: 'outside' as const, cursor: 'default' };
+    },
+    [getHandlePositions, imageToViewport, crop, getLayout, effDimensions]
+  );
+
+  // Mouse / Touch Event Handlers
+  const handlePointerDown = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    e.currentTarget.setPointerCapture(e.pointerId);
+    const rect = e.currentTarget.getBoundingClientRect();
+    const vx = e.clientX - rect.left;
+    const vy = e.clientY - rect.top;
+
+    const hit = getHitTarget(vx, vy);
+
+    setDragStartPos({ x: vx, y: vy });
+    setStartCrop({ ...crop });
+
+    if (hit.type === 'handle') {
+      setActiveHandle(hit.handle);
+    } else if (hit.type === 'crop') {
+      setIsDraggingCrop(true);
+    } else if (hit.type === 'image') {
+      // Start creating a new crop box from click
+      const imgPos = viewportToImage(vx, vy);
+      setIsCreatingCrop(true);
+      setStartCrop({
+        x: Math.round(imgPos.x),
+        y: Math.round(imgPos.y),
+        width: 10,
+        height: 10,
+      });
+      setCrop({
+        x: Math.round(imgPos.x),
+        y: Math.round(imgPos.y),
+        width: 10,
+        height: 10,
+      });
+      setActiveHandle('se');
     }
-    
-    setHoveredHandle(handleUnderCursor);
-    setCursor(newCursor);
   };
 
-  const handleInteractionMove = useCallback((e: MouseEvent | TouchEvent) => {
-    if (!activeHandle && !isPanning) return;
-    
-    if (e.cancelable) {
-      e.preventDefault();
+  const handlePointerMove = (e: React.PointerEvent<HTMLCanvasElement>) => {
+    const rect = e.currentTarget.getBoundingClientRect();
+    const vx = e.clientX - rect.left;
+    const vy = e.clientY - rect.top;
+
+    if (!activeHandle && !isDraggingCrop && !isCreatingCrop) {
+      const hit = getHitTarget(vx, vy);
+      setCursor(hit.cursor);
+      return;
     }
 
-    const pos = getEventPos(e);
-    const deltaX = pos.x - lastPos.x;
-    const deltaY = pos.y - lastPos.y;
+    const { scale } = getLayout();
+    const deltaVx = vx - dragStartPos.x;
+    const deltaVy = vy - dragStartPos.y;
+
+    const deltaImgX = deltaVx / scale;
+    const deltaImgY = deltaVy / scale;
 
     if (activeHandle) {
-        setImageRect(currentRect => {
-            let { x, y, width, height } = currentRect;
-            const aspectRatio = width / height;
+      const newCrop = resizeCropWithHandle(
+        activeHandle,
+        startCrop,
+        deltaImgX,
+        deltaImgY,
+        effDimensions.width,
+        effDimensions.height,
+        activeAspect
+      );
+      setCrop(newCrop);
+    } else if (isDraggingCrop) {
+      const targetX = startCrop.x + deltaImgX;
+      const targetY = startCrop.y + deltaImgY;
 
-            // Define the anchor points which do not move during resize
-            const right = x + width;
-            const bottom = y + height;
+      const clampedX = Math.max(
+        0,
+        Math.min(targetX, effDimensions.width - startCrop.width)
+      );
+      const clampedY = Math.max(
+        0,
+        Math.min(targetY, effDimensions.height - startCrop.height)
+      );
 
-            switch (activeHandle) {
-                case 'topLeft':
-                    width = Math.max(MIN_DIMENSION, width - deltaX);
-                    height = width / aspectRatio;
-                    x = right - width;
-                    y = bottom - height;
-                    break;
-                case 'topRight':
-                    width = Math.max(MIN_DIMENSION, width + deltaX);
-                    height = width / aspectRatio;
-                    y = bottom - height;
-                    break;
-                case 'bottomLeft':
-                    width = Math.max(MIN_DIMENSION, width - deltaX);
-                    height = width / aspectRatio;
-                    x = right - width;
-                    break;
-                case 'bottomRight':
-                    width = Math.max(MIN_DIMENSION, width + deltaX);
-                    height = width / aspectRatio;
-                    break;
-            }
-            return { x, y, width, height };
-        });
-    } else if (isPanning) {
-      setImageRect(r => ({ ...r, x: r.x + deltaX, y: r.y + deltaY }));
-    }
-
-    setLastPos(pos);
-  }, [activeHandle, isPanning, lastPos]);
-
-  const handleInteractionEnd = () => {
-    setActiveHandle(null);
-    if(isPanning) {
-        setIsPanning(false);
-        setCursor('grab');
-    }
-  };
-  
-  useEffect(() => {
-    const handleMove = (e: MouseEvent | TouchEvent) => handleInteractionMove(e);
-    
-    window.addEventListener('mousemove', handleMove);
-    window.addEventListener('mouseup', handleInteractionEnd);
-    
-    window.addEventListener('touchmove', handleMove, { passive: false });
-    window.addEventListener('touchend', handleInteractionEnd);
-    
-    return () => {
-      window.removeEventListener('mousemove', handleMove);
-      window.removeEventListener('mouseup', handleInteractionEnd);
-      window.removeEventListener('touchmove', handleMove);
-      window.removeEventListener('touchend', handleInteractionEnd);
-    };
-  }, [handleInteractionMove]);
-
-
-  const handleZoom = (newZoom: number) => {
-    const { x, y, width, height } = imageRect;
-    const centerX = x + width / 2;
-    const centerY = y + height / 2;
-    const newWidth = width * (newZoom / zoom);
-    const newHeight = height * (newZoom / zoom);
-    setImageRect({
-      width: newWidth,
-      height: newHeight,
-      x: centerX - newWidth / 2,
-      y: centerY - newHeight / 2
-    });
-    setZoom(newZoom);
-  };
-
-  const getCroppedDataUrl = () => {
-    const canvas = canvasRef.current;
-    const img = imageRef.current;
-    if (!canvas || !img.src) return null;
-
-    // Determine the visible part of the image on the canvas
-    const cropX = Math.max(0, imageRect.x);
-    const cropY = Math.max(0, imageRect.y);
-
-    const cropWidth = Math.min(
-      imageRect.x + imageRect.width,
-      canvas.width
-    ) - cropX;
-
-    const cropHeight = Math.min(
-      imageRect.y + imageRect.height,
-      canvas.height
-    ) - cropY;
-
-    if (cropWidth <= 0 || cropHeight <= 0) {
-      toast({
-        title: 'Error',
-        description: 'Cannot crop an empty area.',
-        variant: 'destructive',
+      setCrop({
+        ...startCrop,
+        x: Math.round(clampedX),
+        y: Math.round(clampedY),
       });
-      return null;
     }
-
-    // Determine the source region from the original image
-    const sourceX = (cropX - imageRect.x) * (img.naturalWidth / imageRect.width);
-    const sourceY = (cropY - imageRect.y) * (img.naturalHeight / imageRect.height);
-    const sourceWidth = cropWidth * (img.naturalWidth / imageRect.width);
-    const sourceHeight = cropHeight * (img.naturalHeight / imageRect.height);
-
-    const finalCanvas = document.createElement('canvas');
-    finalCanvas.width = cropWidth;
-    finalCanvas.height = cropHeight;
-    const finalCtx = finalCanvas.getContext('2d')!;
-
-    finalCtx.drawImage(
-      img,
-      sourceX,
-      sourceY,
-      sourceWidth,
-      sourceHeight,
-      0, 0, // Draw at the top-left of the new canvas
-      cropWidth,
-      cropHeight
-    );
-    
-    return finalCanvas.toDataURL('image/png');
   };
 
-  const handleCopy = async () => {
-    const dataUrl = getCroppedDataUrl();
-    if (!dataUrl) return;
+  const handlePointerUp = (e: React.PointerEvent<HTMLCanvasElement>) => {
     try {
-      const blob = await (await fetch(dataUrl)).blob();
-      await navigator.clipboard.write([new ClipboardItem({ 'image/png': blob })]);
+      e.currentTarget.releasePointerCapture(e.pointerId);
+    } catch {
+      // Ignore if not captured
+    }
+    setActiveHandle(null);
+    setIsDraggingCrop(false);
+    setIsCreatingCrop(false);
+  };
+
+  // Keyboard navigation for nudge / shortcuts
+  useEffect(() => {
+    const handleKeyDown = (e: KeyboardEvent) => {
+      if (!imageLoaded) return;
+      // If typing in an input, ignore
+      if (['INPUT', 'TEXTAREA'].includes((e.target as HTMLElement)?.tagName)) return;
+
+      const step = e.shiftKey ? 10 : 1;
+      let dx = 0;
+      let dy = 0;
+
+      if (e.key === 'ArrowLeft') dx = -step;
+      else if (e.key === 'ArrowRight') dx = step;
+      else if (e.key === 'ArrowUp') dy = -step;
+      else if (e.key === 'ArrowDown') dy = step;
+      else if (e.key === 'Escape') {
+        handleResetCrop();
+        return;
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 'c') {
+        e.preventDefault();
+        handleCopyCrop();
+        return;
+      } else if ((e.metaKey || e.ctrlKey) && e.key.toLowerCase() === 's') {
+        e.preventDefault();
+        handleExport('png');
+        return;
+      }
+
+      if (dx !== 0 || dy !== 0) {
+        e.preventDefault();
+        setCrop((prev) => {
+          const clampedX = Math.max(
+            0,
+            Math.min(prev.x + dx, effDimensions.width - prev.width)
+          );
+          const clampedY = Math.max(
+            0,
+            Math.min(prev.y + dy, effDimensions.height - prev.height)
+          );
+          return {
+            ...prev,
+            x: Math.round(clampedX),
+            y: Math.round(clampedY),
+          };
+        });
+      }
+    };
+
+    window.addEventListener('keydown', handleKeyDown);
+    return () => window.removeEventListener('keydown', handleKeyDown);
+  }, [imageLoaded, effDimensions]);
+
+  // Aspect ratio switch handler
+  const handleAspectChange = (aspectId: string) => {
+    setAspectPreset(aspectId);
+    const targetPreset = ASPECT_RATIOS.find((a) => a.id === aspectId);
+    const aspectValue = targetPreset ? targetPreset.value : null;
+
+    setCrop((prev) =>
+      applyAspectToCrop(
+        prev,
+        aspectValue,
+        effDimensions.width,
+        effDimensions.height
+      )
+    );
+  };
+
+  // Rotate handler (90° increments)
+  const handleRotate = (dir: 'cw' | 'ccw') => {
+    const delta = dir === 'cw' ? 90 : -90;
+    const newRotate = (transform.rotate + delta + 360) % 360;
+
+    const newEff = getTransformedDimensions(
+      naturalWidth,
+      naturalHeight,
+      newRotate
+    );
+
+    setTransform((prev) => ({ ...prev, rotate: newRotate }));
+
+    // Reset crop to center of new orientation
+    const newCrop = getInitialCrop(newEff.width, newEff.height, activeAspect);
+    setCrop(newCrop);
+  };
+
+  // Flip handlers
+  const handleFlipH = () => {
+    setTransform((prev) => ({ ...prev, flipH: !prev.flipH }));
+  };
+
+  const handleFlipV = () => {
+    setTransform((prev) => ({ ...prev, flipV: !prev.flipV }));
+  };
+
+  // Reset crop to full or initial size
+  const handleResetCrop = () => {
+    const initial = getInitialCrop(
+      effDimensions.width,
+      effDimensions.height,
+      activeAspect
+    );
+    setCrop(initial);
+    toast({
+      description: 'Crop selection reset.',
+    });
+  };
+
+  // Full reset (crop + transforms + zoom)
+  const handleFullReset = () => {
+    setTransform({ rotate: 0, flipH: false, flipV: false });
+    setZoom(1);
+    setPanOffset({ x: 0, y: 0 });
+    setAspectPreset('free');
+    setCropShape('rect');
+    const initial = getInitialCrop(naturalWidth, naturalHeight, null);
+    setCrop(initial);
+    toast({
+      description: 'Image and crop completely reset.',
+    });
+  };
+
+  // Maximize crop to entire image
+  const handleMaximizeCrop = () => {
+    let newCrop: PixelCrop;
+    if (activeAspect === null) {
+      newCrop = {
+        x: 0,
+        y: 0,
+        width: effDimensions.width,
+        height: effDimensions.height,
+      };
+    } else {
+      newCrop = getInitialCrop(
+        effDimensions.width,
+        effDimensions.height,
+        activeAspect
+      );
+    }
+    setCrop(newCrop);
+  };
+
+  // Generate cropped output canvas helper
+  const getRenderedCroppedCanvas = useCallback(() => {
+    const img = imageElementRef.current;
+    if (!img || !imageLoaded) return null;
+    return createCroppedCanvas(img, crop, transform, cropShape);
+  }, [crop, transform, cropShape, imageLoaded]);
+
+  // Open Preview Modal
+  const handleOpenPreview = () => {
+    const canvas = getRenderedCroppedCanvas();
+    if (!canvas) return;
+    setPreviewCanvas(canvas);
+    setPreviewOpen(true);
+  };
+
+  // Instant Copy
+  const handleCopyCrop = async () => {
+    const canvas = getRenderedCroppedCanvas();
+    if (!canvas) return;
+
+    try {
+      setIsCopying(true);
+      await copyCanvasToClipboard(canvas);
+      setCopiedSuccess(true);
       toast({
         title: 'Success!',
-        description: 'Image copied to clipboard.',
+        description: `Cropped image (${Math.round(crop.width)}×${Math.round(
+          crop.height
+        )}) copied to clipboard.`,
       });
-    } catch (error) {
-      console.error('Failed to copy image:', error);
+      setTimeout(() => setCopiedSuccess(false), 2000);
+    } catch (err) {
+      console.error(err);
       toast({
-        title: 'Error',
-        description: 'Could not copy image to clipboard.',
+        title: 'Copy Failed',
+        description: 'Could not copy to clipboard in this browser.',
         variant: 'destructive',
       });
+    } finally {
+      setIsCopying(false);
     }
   };
 
-  const handleDownload = () => {
-    const dataUrl = getCroppedDataUrl();
-    if (!dataUrl) return;
+  // Direct Download with format
+  const handleExport = (format: ExportFormat = 'png') => {
+    const canvas = getRenderedCroppedCanvas();
+    if (!canvas) return;
 
-    const link = document.createElement('a');
-    link.download = 'resized-image.png';
-    link.href = dataUrl;
-    document.body.appendChild(link);
-    link.click();
-    document.body.removeChild(link);
-    
+    const dataUrl = getCanvasDataUrl(canvas, format, 0.92);
+    const filename = formatExportFilename(
+      imageFile.name,
+      crop.width,
+      crop.height,
+      format
+    );
+    downloadFile(dataUrl, filename);
     toast({
-      title: 'Success!',
-      description: 'Image download started.',
+      title: 'Downloaded!',
+      description: `Saved ${filename}`,
     });
   };
 
   return (
-    <div className="w-full h-[calc(100vh-8rem)] flex flex-col gap-4">
-      <Card className="flex-shrink-0">
-        <div className="p-2 flex flex-wrap items-center justify-between gap-4">
+    <div className="w-full flex flex-col gap-4 max-w-7xl mx-auto h-[calc(100vh-6rem)]">
+      {/* 1. Header Toolbar */}
+      <div className="flex flex-wrap items-center justify-between gap-3 bg-card/90 backdrop-blur-md border rounded-2xl px-4 py-3 shadow-sm">
+        {/* Left: New Image & File Info */}
+        <div className="flex items-center gap-3">
           <TooltipProvider>
-            <div className="flex items-center gap-2">
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={onNewImage}>
-                    <Trash2 className="w-5 h-5" />
-                    <span className="sr-only">New Image</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>New Image</TooltipContent>
-              </Tooltip>
-               <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={handleCopy}>
-                    <Copy className="w-5 h-5" />
-                    <span className="sr-only">Copy Image</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Copy to Clipboard</TooltipContent>
-              </Tooltip>
-              <Tooltip>
-                <TooltipTrigger asChild>
-                  <Button variant="ghost" size="icon" onClick={handleDownload}>
-                    <Download className="w-5 h-5" />
-                    <span className="sr-only">Download Image</span>
-                  </Button>
-                </TooltipTrigger>
-                <TooltipContent>Download Image</TooltipContent>
-              </Tooltip>
-            </div>
-            <div className="flex items-center gap-2 w-full max-w-xs">
-              <ZoomOut className="w-5 h-5 text-muted-foreground" />
-              <Slider
-                min={0.1}
-                max={5}
-                step={0.1}
-                value={[zoom]}
-                onValueChange={([val]) => handleZoom(val)}
-              />
-              <ZoomIn className="w-5 h-5 text-muted-foreground" />
-            </div>
-             <div className="text-sm text-muted-foreground w-32 text-center shrink-0">
-              {Math.round(imageRect.width)} x {Math.round(imageRect.height)}
-            </div>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button
+                  variant="outline"
+                  size="sm"
+                  onClick={onNewImage}
+                  className="gap-2 text-muted-foreground hover:text-destructive hover:border-destructive/40"
+                >
+                  <Trash2 className="w-4 h-4" />
+                  <span className="hidden sm:inline">New Image</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Discard and pick a new image</TooltipContent>
+            </Tooltip>
           </TooltipProvider>
+
+          <div className="flex items-center gap-2">
+            <span className="text-sm font-semibold text-foreground truncate max-w-[180px] sm:max-w-[240px]">
+              {imageFile.name}
+            </span>
+            <Badge variant="secondary" className="font-mono text-xs hidden md:inline-flex">
+              Original: {effDimensions.width} × {effDimensions.height} px
+            </Badge>
+            <Badge variant="outline" className="font-mono text-xs text-muted-foreground hidden lg:inline-flex">
+              {formatBytes(imageFile.size)}
+            </Badge>
+          </div>
         </div>
-      </Card>
-      <Card 
-        className="flex-grow w-full h-full overflow-hidden" 
+
+        {/* Center: Crop output dimensions badge */}
+        <div className="flex items-center gap-2">
+          <Badge
+            variant="default"
+            className="px-3 py-1 text-xs font-mono font-medium shadow-sm bg-primary/90 hover:bg-primary"
+          >
+            Crop: {Math.round(crop.width)} × {Math.round(crop.height)} px
+          </Badge>
+        </div>
+
+        {/* Right: Actions (Reset, Preview, Copy, Download) */}
+        <div className="flex items-center gap-2">
+          <TooltipProvider>
+            <Tooltip>
+              <TooltipTrigger asChild>
+                <Button variant="ghost" size="sm" onClick={handleResetCrop} className="gap-1 text-xs">
+                  <RefreshCw className="w-3.5 h-3.5" />
+                  <span className="hidden sm:inline">Reset</span>
+                </Button>
+              </TooltipTrigger>
+              <TooltipContent>Reset crop box to full</TooltipContent>
+            </Tooltip>
+          </TooltipProvider>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleOpenPreview}
+            className="gap-2"
+          >
+            <Eye className="w-4 h-4" />
+            <span className="hidden sm:inline">Preview</span>
+          </Button>
+
+          <Button
+            variant="outline"
+            size="sm"
+            onClick={handleCopyCrop}
+            disabled={isCopying}
+            className="gap-2"
+          >
+            {copiedSuccess ? (
+              <Check className="w-4 h-4 text-emerald-500" />
+            ) : (
+              <Copy className="w-4 h-4" />
+            )}
+            <span className="hidden sm:inline">{copiedSuccess ? 'Copied' : 'Copy'}</span>
+          </Button>
+
+          {/* Download Dropdown */}
+          <DropdownMenu>
+            <DropdownMenuTrigger asChild>
+              <Button size="sm" className="gap-2 shadow-sm">
+                <Download className="w-4 h-4" />
+                <span>Download</span>
+                <ChevronDown className="w-3.5 h-3.5 opacity-70" />
+              </Button>
+            </DropdownMenuTrigger>
+            <DropdownMenuContent align="end" className="w-44">
+              <DropdownMenuItem onClick={() => handleExport('png')} className="justify-between">
+                <span>PNG Image</span>
+                <span className="text-[10px] text-muted-foreground uppercase font-mono">Lossless</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('jpeg')} className="justify-between">
+                <span>JPEG Image</span>
+                <span className="text-[10px] text-muted-foreground uppercase font-mono">Photo</span>
+              </DropdownMenuItem>
+              <DropdownMenuItem onClick={() => handleExport('webp')} className="justify-between">
+                <span>WebP Image</span>
+                <span className="text-[10px] text-muted-foreground uppercase font-mono">Modern</span>
+              </DropdownMenuItem>
+            </DropdownMenuContent>
+          </DropdownMenu>
+        </div>
+      </div>
+
+      {/* 2. Main Stage Area */}
+      <div
         ref={containerRef}
-        onMouseLeave={() => setHoveredHandle(null)}
+        className="relative flex-1 w-full bg-slate-950/90 rounded-2xl border overflow-hidden flex items-center justify-center select-none shadow-inner"
+        style={{ minHeight: '380px' }}
       >
         <canvas
           ref={canvasRef}
-          className="w-full h-full"
+          className="w-full h-full block"
           style={{ cursor, touchAction: 'none' }}
-          onMouseDown={handleInteractionStart}
-          onTouchStart={handleInteractionStart}
-          onMouseMove={handleCanvasMouseMove}
+          onPointerDown={handlePointerDown}
+          onPointerMove={handlePointerMove}
+          onPointerUp={handlePointerUp}
+          onPointerCancel={handlePointerUp}
+          onDoubleClick={handleMaximizeCrop}
         />
-      </Card>
+
+        {/* Floating Controls Overlay (Aspect ratios & tools) */}
+        <div className="absolute bottom-4 left-1/2 -translate-x-1/2 flex flex-wrap items-center justify-center gap-2 bg-background/95 backdrop-blur-md border shadow-xl px-3 py-2 rounded-2xl max-w-[94vw] z-10 transition-all">
+          {/* Aspect Ratio Presets */}
+          <div className="flex items-center gap-1 overflow-x-auto py-0.5 max-w-full">
+            {ASPECT_RATIOS.map((preset) => (
+              <button
+                key={preset.id}
+                onClick={() => handleAspectChange(preset.id)}
+                className={`px-2.5 py-1 text-xs font-semibold rounded-lg transition-all whitespace-nowrap ${
+                  aspectPreset === preset.id
+                    ? 'bg-primary text-primary-foreground shadow-sm'
+                    : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+                }`}
+                title={preset.description}
+              >
+                {preset.label}
+              </button>
+            ))}
+
+            {/* Circle / Avatar Crop Toggle */}
+            <div className="h-4 w-[1px] bg-border mx-1" />
+
+            <button
+              onClick={() => {
+                const next = cropShape === 'rect' ? 'round' : 'rect';
+                setCropShape(next);
+                if (next === 'round' && aspectPreset !== '1:1') {
+                  handleAspectChange('1:1');
+                }
+              }}
+              className={`p-1.5 rounded-lg text-xs font-semibold transition-all flex items-center gap-1 ${
+                cropShape === 'round'
+                  ? 'bg-primary text-primary-foreground shadow-sm'
+                  : 'text-muted-foreground hover:text-foreground hover:bg-muted'
+              }`}
+              title="Circular Avatar Crop"
+            >
+              {cropShape === 'round' ? (
+                <Circle className="w-3.5 h-3.5 fill-current" />
+              ) : (
+                <Circle className="w-3.5 h-3.5" />
+              )}
+              <span className="hidden sm:inline">Circle</span>
+            </button>
+          </div>
+
+          <div className="h-4 w-[1px] bg-border mx-1 hidden sm:block" />
+
+          {/* Transform Buttons: Rotate & Flip */}
+          <div className="flex items-center gap-1">
+            <TooltipProvider>
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleRotate('ccw')}
+                  >
+                    <RotateCcw className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Rotate -90°</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className="h-7 w-7"
+                    onClick={() => handleRotate('cw')}
+                  >
+                    <RotateCw className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Rotate +90°</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-7 w-7 ${transform.flipH ? 'bg-primary/20 text-primary' : ''}`}
+                    onClick={handleFlipH}
+                  >
+                    <FlipHorizontal className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Flip Horizontally</TooltipContent>
+              </Tooltip>
+
+              <Tooltip>
+                <TooltipTrigger asChild>
+                  <Button
+                    variant="ghost"
+                    size="icon"
+                    className={`h-7 w-7 ${transform.flipV ? 'bg-primary/20 text-primary' : ''}`}
+                    onClick={handleFlipV}
+                  >
+                    <FlipVertical className="w-3.5 h-3.5" />
+                  </Button>
+                </TooltipTrigger>
+                <TooltipContent>Flip Vertically</TooltipContent>
+              </Tooltip>
+            </TooltipProvider>
+          </div>
+
+          <div className="h-4 w-[1px] bg-border mx-1 hidden md:block" />
+
+          {/* Zoom Slider */}
+          <div className="hidden md:flex items-center gap-2 pl-1">
+            <ZoomOut className="w-3.5 h-3.5 text-muted-foreground" />
+            <Slider
+              min={0.5}
+              max={2.5}
+              step={0.1}
+              value={[zoom]}
+              onValueChange={([val]) => setZoom(val)}
+              className="w-20"
+            />
+            <ZoomIn className="w-3.5 h-3.5 text-muted-foreground" />
+            <span className="text-[11px] font-mono text-muted-foreground w-8 text-right">
+              {Math.round(zoom * 100)}%
+            </span>
+            <Button
+              variant="ghost"
+              size="icon"
+              className="h-7 w-7 text-muted-foreground"
+              onClick={() => {
+                setZoom(1);
+                setPanOffset({ x: 0, y: 0 });
+              }}
+              title="Fit to view"
+            >
+              <Maximize2 className="w-3 h-3" />
+            </Button>
+          </div>
+        </div>
+      </div>
+
+      {/* 3. Crop Preview Modal */}
+      <CropPreviewDialog
+        open={previewOpen}
+        onOpenChange={setPreviewOpen}
+        croppedCanvas={previewCanvas}
+        originalFileName={imageFile.name}
+      />
     </div>
   );
 }

@@ -1,161 +1,188 @@
-# Canvas Crop - A Simple Image Resizer
+# Canvas Crop
 
-Canvas Crop is a straightforward, client-side web application for resizing and cropping images. Built with Next.js, React, and TypeScript, it offers a clean, intuitive interface for all your basic image manipulation needs. Drag, drop, resize, and crop with ease, then copy to your clipboard or download the final image.
+**A free, private, professional-grade image cropping tool — entirely in your browser.**
+
+Crop, rotate, flip, and export images at full native resolution with no uploads, no accounts, and no tracking. What happens in your browser, stays in your browser.
+
+[![Open Source](https://img.shields.io/badge/Open%20Source-MIT-violet?style=flat-square)](https://github.com/ajbatac/canvas-crop/blob/main/LICENSE)
+[![Next.js](https://img.shields.io/badge/Next.js-15-black?style=flat-square&logo=next.js)](https://nextjs.org/)
+[![TypeScript](https://img.shields.io/badge/TypeScript-5-blue?style=flat-square&logo=typescript)](https://www.typescriptlang.org/)
+
+---
 
 ## Features
 
--   **Drag and Drop**: Easily upload images by dragging them onto the application.
--   **Client-Side Processing**: All image processing happens in your browser, ensuring privacy and speed.
--   **Interactive Resizing & Panning**: Click and drag corners to resize or move the. image within the canvas.
--   **Zoom Functionality**: Zoom in and out for precise adjustments.
--   **Dark/Light Mode**: Switch between light and dark themes for your viewing comfort.
--   **Copy to Clipboard**: Instantly copy the edited image to your clipboard.
--   **Download Image**: Save the final resized and cropped image as a PNG file.
--   **Responsive Design**: Works seamlessly on both desktop and mobile devices.
+### 🎯 Interactive Crop Box
+- **8 precision handles** — 4 corner brackets and 4 edge pills, each with a generous touch/pointer hit area
+- **Rule-of-thirds composition grid** — 3×3 hairline guide lines inside the live crop region
+- **Dark scrim overlay** — uncropped areas are immediately dimmed so you see exactly what you'll get
+- **Drag to reposition** — click anywhere inside the crop box to move it
+- **Draw a new crop** — click-and-drag anywhere on the image to start a fresh selection
+
+### ⬛ Aspect Ratio Presets
+- **Free** — unconstrained freeform selection
+- **1:1** — square / avatar
+- **16:9** — widescreen / video
+- **4:3** — standard photo / presentation
+- **9:16** — vertical Stories / Reels
+- **3:2** — classic 35mm film
+- **2:3** — portrait photo
+- **Original** — lock to the uploaded image's own ratio
+- **⭕ Circle / Avatar** — circular cutout with transparent PNG export
+
+### 🔄 Orientation Transforms
+- Rotate **±90°** (clockwise / counter-clockwise)
+- Flip **horizontally** or **vertically**
+- All transforms are non-destructive — reset any time
+
+### 📐 Viewport Controls
+- **Zoom** (50–250%) and a **Fit to View** button
+- Real-time crop dimension badge (`Crop: 1080 × 1080 px`)
+- Original resolution and file size shown in the header
+
+### 💾 High-Resolution Export
+- **PNG** — lossless, transparency-safe
+- **JPEG** — compressed with adjustable quality (via Preview dialog)
+- **WebP** — modern format with excellent compression
+- **Copy to Clipboard** — instant paste into Figma, Slack, Gmail, etc.
+- Crops at **100% native image resolution** — never upsampled or downscaled
+
+### 🔒 Privacy First
+- Everything runs in the browser via the Canvas API
+- No server, no cloud, no analytics on your images
+- Works fully offline once the page loads
+
+### ✨ Other Niceties
+- Dark / Light mode
+- Keyboard shortcuts: Arrow keys to nudge (Shift × 10px), `Cmd/Ctrl+C` to copy, `Cmd/Ctrl+S` to save
+- Responsive layout — works on desktop and mobile
+- **Preview modal** before saving: see exact output with format and quality options
 
 ---
 
 ## Getting Started
 
-These instructions will get you a copy of the project up and running on your local machine for development and testing purposes.
-
 ### Prerequisites
 
--   [Node.js](https://nodejs.org/) (v20.x or later recommended)
--   [npm](https://www.npmjs.com/) (usually comes with Node.js)
--   [Docker](https://www.docker.com/) (optional, for containerized setup)
+- [Node.js](https://nodejs.org/) v20 or later
+- [npm](https://www.npmjs.com/)
 
-### Installation
+### Local Development
 
-1.  **Clone the repository:**
-    ```sh
-    git clone https://github.com/your-username/canvas-crop.git
-    cd canvas-crop
-    ```
+```bash
+# Clone the repo
+git clone https://github.com/ajbatac/canvas-crop.git
+cd canvas-crop
 
-2.  **Install NPM packages:**
-    ```sh
-    npm install
-    ```
+# Install dependencies
+npm install
 
-3.  **Run the development server:**
-    ```sh
-    npm run dev
-    ```
-    Open [http://localhost:9002](http://localhost:9002) with your browser to see the result.
+# Start the dev server (runs on http://localhost:9002)
+npm run dev
+```
 
-### Dockerized Setup
+### Dockerised Development
 
-For a containerized development environment, use the provided Docker configurations.
+```bash
+# Build the dev image
+docker build -t canvas-crop-dev -f Dockerfile.dev .
 
-1.  **Build the development Docker image:**
-    ```sh
-    docker build -t canvas-crop-dev -f Dockerfile.dev .
-    ```
-
-2.  **Run the container:**
-    ```sh
-    docker run -p 9002:9002 -v .:/app canvas-crop-dev
-    ```
-    This will start the development server, and you can access it at [http://localhost:9002](http://localhost:9002).
+# Run with hot reload
+docker run -p 9002:9002 -v .:/app canvas-crop-dev
+```
 
 ---
 
 ## Deployment
 
-The application is configured for production builds and can be deployed to any platform that supports Node.js or Docker containers, such as Vercel, Netlify, or Google Cloud Run.
+Canvas Crop compiles to a static Next.js export and can be deployed anywhere.
 
 ### Production Build
 
-To create a production-ready build, run:
-```sh
-npm run build
-```
-This will compile the application into an optimized set of static files in the `.next` directory.
-
-### Production Start
-
-To run the production server, use:
-```sh
-npm start
+```bash
+npm run build   # Generates .next/ output
+npm start       # Runs the production server
 ```
 
-### Docker Production Deployment
+### Docker Production
 
-1.  **Build the production Docker image:**
-    ```sh
-    docker build -t canvas-crop-prod -f Dockerfile.prod .
-    ```
+```bash
+docker build -t canvas-crop-prod -f Dockerfile.prod .
+docker run -p 3000:3000 canvas-crop-prod
+# Available at http://localhost:3000
+```
 
-2.  **Run the production container:**
-    ```sh
-    docker run -p 3000:3000 canvas-crop-prod
-    ```
-    The application will be available at `http://localhost:3000`.
+Compatible with **Vercel**, **Netlify**, **Firebase App Hosting**, **Cloudflare Pages**, **Google Cloud Run**, and any Node-capable host.
 
 ---
 
 ## Project Structure
 
-The project follows a standard Next.js App Router structure. Here is an overview of the key files and directories:
-
 ```
-.
-├── public/                 # Static assets (images, fonts, etc.)
+canvas-crop/
+├── public/                      # Static assets (icons, manifest)
 ├── src/
-│   ├── app/                # Application routes and pages
-│   │   ├── changelog/      # Changelog page
-│   │   │   └── page.tsx
-│   │   ├── legal/          # Static legal pages (TOS, Privacy, etc.)
-│   │   │   ├── ...
-│   │   │   └── page.tsx
-│   │   ├── globals.css     # Global styles
-│   │   ├── layout.tsx      # Root layout component
-│   │   └── page.tsx        # Main application page component
-│   ├── components/         # Reusable React components
-│   │   ├── ui/             # ShadCN UI components
-│   │   ├── file-uploader.tsx # Component for uploading files
-│   │   ├── image-editor.tsx  # Core image editing component
-│   │   ├── legal-page.tsx  # Layout for legal pages
-│   │   ├── footerCopyright.tsx # Footer component with author credit
-│   │   ├── theme-provider.tsx # Wrapper for next-themes
-│   │   └── theme-toggle.tsx   # Dark/Light mode switch
-│   ├── hooks/              # Custom React hooks
-│   │   └── use-toast.ts    # Hook for displaying toast notifications
-│   ├── lib/                # Utility functions
-│   │   └── utils.ts        # General utility functions (e.g., cn for classnames)
-├── .env                    # Environment variables (empty by default)
-├── Dockerfile.dev          # Docker configuration for development
-├── Dockerfile.prod         # Docker configuration for production
-├── next.config.ts          # Next.js configuration file
-├── package.json            # Project dependencies and scripts
-├── README.md               # This file
-└── tsconfig.json           # TypeScript configuration
+│   ├── app/
+│   │   ├── changelog/           # Changelog page
+│   │   ├── legal/               # Terms, Privacy, DMCA, Cookie, etc.
+│   │   ├── globals.css          # Design tokens & animations
+│   │   ├── layout.tsx           # Root layout + SEO metadata
+│   │   └── page.tsx             # Landing page & editor shell
+│   ├── components/
+│   │   ├── crop/
+│   │   │   └── crop-preview-dialog.tsx  # Export preview modal
+│   │   ├── ui/                  # Radix-based shadcn/ui primitives
+│   │   ├── file-uploader.tsx    # Drag-and-drop upload zone
+│   │   ├── image-editor.tsx     # Core crop studio (canvas-based)
+│   │   ├── footerCopyright.tsx  # Footer with legal links
+│   │   ├── theme-provider.tsx   # next-themes wrapper
+│   │   └── theme-toggle.tsx     # Dark / Light switch
+│   ├── hooks/
+│   │   └── use-toast.ts         # Toast notification hook
+│   └── lib/
+│       ├── crop-utils.ts        # Geometry math, transforms & canvas export
+│       └── utils.ts             # Tailwind class merge (cn)
+├── Dockerfile.dev               # Dev container configuration
+├── Dockerfile.prod              # Production container configuration
+├── next.config.ts               # Next.js configuration
+├── tailwind.config.ts           # Tailwind + typography plugin
+└── tsconfig.json                # TypeScript configuration
 ```
 
 ---
 
-## Dependencies
+## Tech Stack
 
--   **next**: `^15.3.3` - The React framework for production.
--   **react**: `^18.3.1` - A JavaScript library for building user interfaces.
--   **react-dom**: `^18.3.1` - Serves as the entry point to the DOM and server renderers for React.
--   **next-themes**: `^0.3.0` - An abstraction for themes in Next.js.
--   **typescript**: `^5` - A typed superset of JavaScript that compiles to plain JavaScript.
--   **tailwindcss**: `^3.4.1` - A utility-first CSS framework for rapid UI development.
--   **@tailwindcss/typography**: `^0.5.13` - A plugin that provides a set of `prose` classes for beautiful typographic defaults.
--   **shadcn/ui**: Various - A collection of re-usable components built using Radix UI and Tailwind CSS.
--   **lucide-react**: `^0.475.0` - A library of simply beautiful and consistent icons.
--   **clsx**: `^2.1.1` - A tiny utility for constructing `className` strings conditionally.
--   **tailwind-merge**: `^3.0.1` - A utility to intelligently merge Tailwind CSS classes.
+| Library | Purpose |
+|---|---|
+| [Next.js 15](https://nextjs.org/) | React framework (App Router + Turbopack) |
+| [React 18](https://react.dev/) | Component model |
+| [TypeScript 5](https://www.typescriptlang.org/) | Type safety |
+| [Tailwind CSS 3](https://tailwindcss.com/) | Utility-first styling |
+| [shadcn/ui](https://ui.shadcn.com/) | Accessible UI primitives (Radix) |
+| [Lucide React](https://lucide.dev/) | Icon library |
+| [next-themes](https://github.com/pacocoursey/next-themes) | Dark/light mode |
+| Canvas API | All image processing |
 
 ---
 
 ## Troubleshooting
 
--   **"Could not copy image to clipboard" error**: This can sometimes be a browser security issue. Ensure you are serving the application over HTTPS in production, as some browser APIs require a secure context.
--   **Image quality**: The output image is a PNG. The resizing algorithm in the browser is standard quality; for professional-grade resizing, dedicated software may be better.
+**"Could not copy image to clipboard"**
+This feature requires a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts) (HTTPS or `localhost`). It will not work over plain HTTP in production.
+
+**Output looks slightly different from the editor preview**
+The canvas uses the browser's built-in bilinear interpolation for screen rendering. The final exported file is always rendered directly from the original image pixels — no quality is lost.
+
+**JPEG/WebP with transparency**
+Transparent areas are rendered with a white background when exporting to JPEG (which does not support transparency). Use PNG or WebP for images with transparent regions.
 
 ---
 
-Created with ❤️ by <a href="https://ajbatac.github.io/?=ImageCropper" target="_blank">AJ Batac (@ajbatac)</a> - v1.2.0 (<a href="/changelog">changelog</a>)
+## Contributing
+
+Issues and pull requests are welcome! Please open an issue first to discuss what you'd like to change.
+
+---
+
+Created with ❤️ by [AJ Batac (@ajbatac)](https://ajbatac.github.io/?=CanvasCrop) — [changelog](/changelog)
