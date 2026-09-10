@@ -10,208 +10,89 @@ Crop, rotate, flip, and export images at full native resolution with no uploads,
 
 ---
 
+## Overview
+
+Canvas Crop is an open-source, client-side web application engineered for quick, privacy-conscious image editing. Unlike traditional online tools that upload your private photos to remote cloud servers, Canvas Crop executes all image decoding, manipulation, cropping, and encoding locally on your device via the HTML5 Canvas API.
+
+---
+
 ## Features
 
-### 🎯 Interactive Crop Box
-- **8 precision handles** — 4 corner brackets and 4 edge pills, each with a generous touch/pointer hit area
-- **Rule-of-thirds composition grid** — 3×3 hairline guide lines inside the live crop region
-- **Dark scrim overlay** — uncropped areas are immediately dimmed so you see exactly what you'll get
-- **Drag to reposition** — click anywhere inside the crop box to move it
-- **Draw a new crop** — click-and-drag anywhere on the image to start a fresh selection
+### 🎯 Precision Interactive Cropping
+- **Intuitive resize handles** — 8 touch-friendly handles with generous tap targets for effortless adjustment on desktop and mobile.
+- **Rule-of-thirds composition grid** — 3×3 guidelines for framing balanced photos and portraits.
+- **Live scrim overlay** — Uncropped margins are softly dimmed so you can focus on your exact output.
+- **Drag and draw** — Move the crop selection anywhere across your canvas or click-and-drag to start a fresh crop.
 
 ### ⬛ Aspect Ratio Presets
-- **Free** — unconstrained freeform selection
-- **1:1** — square / avatar
-- **16:9** — widescreen / video
-- **4:3** — standard photo / presentation
-- **9:16** — vertical Stories / Reels
-- **3:2** — classic 35mm film
-- **2:3** — portrait photo
-- **Original** — lock to the uploaded image's own ratio
-- **⭕ Circle / Avatar** — circular cutout with transparent PNG export
+- **Freeform** — Unconstrained custom dimensions.
+- **1:1** — Square (profile pictures, avatars, social media).
+- **16:9** — Widescreen (video, thumbnails, presentations).
+- **4:3** — Standard photography.
+- **9:16** — Vertical video, Stories, and Reels.
+- **3:2 & 2:3** — Classic 35mm photography (landscape and portrait).
+- **Original** — Retain your photo's natural proportions.
+- **⭕ Circle / Avatar** — Circular avatar cutout with transparent background support.
 
-### 🔄 Orientation Transforms
-- Rotate **±90°** (clockwise / counter-clockwise)
-- Flip **horizontally** or **vertically**
-- All transforms are non-destructive — reset any time
+### 🔄 Non-Destructive Transformations
+- Rotate **±90°** clockwise or counter-clockwise.
+- Flip **horizontally** or **vertically**.
+- Instant reset to return to the original photo at any time.
 
 ### 📐 Viewport Controls
-- **Zoom** (50–250%) and a **Fit to View** button
-- Real-time crop dimension badge (`Crop: 1080 × 1080 px`)
-- Original resolution and file size shown in the header
+- Smooth **Zoom** slider (50% to 250%) and one-click **Fit to View**.
+- Live dimension indicator showing exact pixel output in real time.
+- Original image resolution and file size display.
 
-### 💾 High-Resolution Export
-- **PNG** — lossless, transparency-safe
-- **JPEG** — compressed with adjustable quality (via Preview dialog)
-- **WebP** — modern format with excellent compression
-- **Copy to Clipboard** — instant paste into Figma, Slack, Gmail, etc.
-- Crops at **100% native image resolution** — never upsampled or downscaled
+### 💾 Flexible Export & Preview
+- **Interactive Preview Dialog** — Inspect your cropped photo prior to saving.
+- **Multiple Formats** — Export to **PNG** (lossless/transparency), **JPEG** (with adjustable compression quality), or **WebP** (modern high-compression).
+- **Copy to Clipboard** — One-click instant copy to paste directly into Figma, Slack, docs, or chat apps.
+- **100% Native Resolution** — Crops directly from source pixels, never upscaled or downscaled.
 
-### 🔒 Privacy First
-- Everything runs in the browser via the Canvas API
-- No server, no cloud, no analytics on your images
-- Works fully offline once the page loads
-
-### Additional Features
-- Dark / Light mode
-- Keyboard shortcuts: Arrow keys to nudge (Shift × 10px), `Cmd/Ctrl+C` to copy, `Cmd/Ctrl+S` to save
-- Responsive layout — works on desktop and mobile
-- **Preview modal** before saving: see exact output with format and quality options
+### 🔒 100% Private & Offline-Ready
+- Zero server processing. Your images never leave your computer or phone.
+- No sign-ups, no accounts, no subscriptions, and no analytics on your files.
+- Fully operational offline once loaded.
 
 ---
 
-## Architecture & Code Quality
-
-Canvas Crop follows **SOLID** and **DRY** design principles:
-
-- **Single Responsibility Principle (SRP)**:
-  - `src/lib/crop-utils.ts`: Pure mathematics, geometry coordinate transformations, and canvas export pipeline. Contains no UI or React dependencies.
-  - `src/components/image-editor.tsx`: Coordinates pointer/touch events, canvas drawing, and interactive state.
-  - `src/components/file-uploader.tsx`: Handles drag-and-drop validation and file ingestion.
-  - `src/components/crop/crop-preview-dialog.tsx`: Presentation dialog for final image export and clipboard actions.
-- **Open/Closed Principle (OCP)**:
-  - `ASPECT_RATIOS` and `EXPORT_FORMATS` presets are configuration arrays that can be extended without altering the core math engine.
-- **Don't Repeat Yourself (DRY)**:
-  - Aspect ratio resolution (`resolveAspectRatio`) is centralized, eliminating duplicate branch logic across crop initialization, ratio switching, and handle dragging.
-  - MIME type lookups (`formatToMimeType`) and export filename generation (`formatExportFilename`) are shared across preview and direct download paths.
-  - Event suppression and pointer handling are unified in utility helpers.
-- **Strict TypeScript**:
-  - Configured with `strict: true`, `noUncheckedIndexedAccess: true`, and `noImplicitOverride: true`.
-  - Comprehensive JSDoc annotations across all public functions, types, and component props.
-
----
-
-## Getting Started
+## Quick Start
 
 ### Prerequisites
-
 - [Node.js](https://nodejs.org/) v20 or later
 - [npm](https://www.npmjs.com/)
 
-### Local Development
+### Running Locally
 
 ```bash
-# Clone the repo
+# Clone the repository
 git clone https://github.com/ajbatac/canvas-crop.git
 cd canvas-crop
 
 # Install dependencies
 npm install
 
-# Start the dev server (runs on http://localhost:9002)
+# Start development server
 npm run dev
 ```
 
-### Type Checking & Linting
-
-```bash
-# Run strict TypeScript type checks
-npx tsc --noEmit
-```
-
-### Dockerised Development
-
-```bash
-# Build the dev image
-docker build -t canvas-crop-dev -f Dockerfile.dev .
-
-# Run with hot reload
-docker run -p 9002:9002 -v .:/app canvas-crop-dev
-```
-
----
-
-## Deployment
-
-Canvas Crop compiles to a static Next.js export and can be deployed anywhere.
-
-### Production Build
-
-```bash
-npm run build   # Generates .next/ output
-npm start       # Runs the production server
-```
-
-### Docker Production
-
-```bash
-docker build -t canvas-crop-prod -f Dockerfile.prod .
-docker run -p 3000:3000 canvas-crop-prod
-# Available at http://localhost:3000
-```
-
-Compatible with **Vercel**, **Netlify**, **Firebase App Hosting**, **Cloudflare Pages**, **Google Cloud Run**, and any Node-capable host.
-
----
-
-## Project Structure
-
-```
-canvas-crop/
-├── public/                       # Static assets (icons, manifest)
-├── src/
-│   ├── app/
-│   │   ├── changelog/            # Changelog page
-│   │   ├── legal/                # Terms, Privacy, DMCA, Cookie, etc.
-│   │   ├── globals.css           # Design tokens & animations
-│   │   ├── layout.tsx            # Root layout + SEO metadata
-│   │   └── page.tsx              # Landing page & editor shell
-│   ├── components/
-│   │   ├── crop/
-│   │   │   └── crop-preview-dialog.tsx  # Export preview modal
-│   │   ├── ui/                   # Radix-based shadcn/ui primitives
-│   │   ├── file-uploader.tsx     # Drag-and-drop upload zone
-│   │   ├── footer-copyright.tsx  # Footer with legal links & attribution
-│   │   ├── image-editor.tsx      # Core crop studio (canvas-based)
-│   │   ├── theme-provider.tsx    # next-themes wrapper
-│   │   └── theme-toggle.tsx      # Dark / Light switch
-│   ├── hooks/
-│   │   └── use-toast.ts          # Toast notification hook
-│   └── lib/
-│       ├── constants.ts          # App constants (repo, version, author)
-│       ├── crop-utils.ts         # Geometry math, transforms & canvas export
-│       └── utils.ts              # Tailwind class merge (cn)
-├── Dockerfile.dev                # Dev container configuration
-├── Dockerfile.prod               # Production container configuration
-├── next.config.ts                # Next.js configuration
-├── tailwind.config.ts            # Tailwind + typography plugin
-└── tsconfig.json                 # TypeScript configuration (strict)
-```
+Visit `http://localhost:9002` in your browser.
 
 ---
 
 ## Tech Stack
 
-| Library | Purpose |
-|---|---|
-| [Next.js 15](https://nextjs.org/) | React framework (App Router + Turbopack) |
-| [React 18](https://react.dev/) | Component model |
-| [TypeScript 5](https://www.typescriptlang.org/) | Type safety |
-| [Tailwind CSS 3](https://tailwindcss.com/) | Utility-first styling |
-| [shadcn/ui](https://ui.shadcn.com/) | Accessible UI primitives (Radix) |
-| [Lucide React](https://lucide.dev/) | Icon library |
-| [next-themes](https://github.com/pacocoursey/next-themes) | Dark/light mode |
-| Canvas API | All image processing |
+- **Framework**: [Next.js 15](https://nextjs.org/) (App Router & Turbopack)
+- **UI & Styling**: [Tailwind CSS](https://tailwindcss.com/), [shadcn/ui](https://ui.shadcn.com/), [Lucide Icons](https://lucide.dev/)
+- **Theme**: [next-themes](https://github.com/pacocoursey/next-themes) (Light / Dark mode support)
+- **Language**: [TypeScript 5](https://www.typescriptlang.org/)
+- **Processing**: Native HTML5 Canvas API
 
 ---
 
-## Troubleshooting
+## License & Attribution
 
-**"Could not copy image to clipboard"**
-This feature requires a [secure context](https://developer.mozilla.org/en-US/docs/Web/Security/Secure_Contexts) (HTTPS or `localhost`). It will not work over plain HTTP in production.
+Distributed under the MIT License. See [LICENSE](https://github.com/ajbatac/canvas-crop/blob/main/LICENSE) for details.
 
-**Output looks slightly different from the editor preview**
-The canvas uses the browser's built-in bilinear interpolation for screen rendering. The final exported file is always rendered directly from the original image pixels — no quality is lost.
-
-**JPEG/WebP with transparency**
-Transparent areas are rendered with a white background when exporting to JPEG (which does not support transparency). Use PNG or WebP for images with transparent regions.
-
----
-
-## Contributing
-
-Issues and pull requests are welcome! Please open an issue first to discuss what you'd like to change.
-
----
-
-Created with ❤️ by [AJ Batac (@ajbatac)](https://ajbatac.github.io/?=CanvasCrop) — [changelog](/changelog)
+Created with ❤️ by [AJ Batac (@ajbatac)](https://ajbatac.github.io/?=CanvasCrop) — [v2.0.0](/changelog) ([changelog](/changelog))

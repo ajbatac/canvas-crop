@@ -1,7 +1,7 @@
 'use client';
 
 import type React from 'react';
-import { Crop, FilePlus, FileText, Trash2, Wrench } from 'lucide-react';
+import { Crop, FilePlus, FileText, Rss, Trash2, Wrench } from 'lucide-react';
 import { FooterCopyright } from '@/components/footer-copyright';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge, type badgeVariants } from '@/components/ui/badge';
@@ -23,6 +23,27 @@ interface ChangelogEntry {
 }
 
 const changelog: readonly ChangelogEntry[] = [
+  {
+    version: '2.0.0',
+    date: '2026-09-09',
+    sections: {
+      Added: [
+        'Interactive Crop Preview modal before saving, enabling you to inspect your exact crop output, select preferred image formats (PNG, JPEG, WebP), adjust compression quality, and copy directly to your clipboard.',
+        'Extensive aspect ratio presets including Freeform, Square (1:1), Widescreen (16:9), Standard (4:3), Stories/Reels (9:16), 35mm Classic (3:2 & 2:3), Original Image Ratio, and Circular Avatar cutout.',
+        'Non-destructive orientation controls to rotate images clockwise and counter-clockwise in 90-degree steps, or flip horizontally and vertically.',
+        'Composition rule-of-thirds alignment grid and softened focus overlay to help frame balanced photos.',
+        'RSS feed subscription support for receiving instant updates about new features and improvements.',
+      ],
+      Changed: [
+        'Upgraded the core application framework for significantly faster loading, enhanced security, and smoother responsiveness across desktop and mobile browsers.',
+        'Refined touch handles and mouse pointer interactions for pixel-perfect cropping accuracy.',
+      ],
+      Fixed: [
+        'Resolved coordinate and boundary alignment issues when scaling or cropping at high zoom factors.',
+        'Fixed image aspect ratio consistency when resizing selections on small screens.',
+      ],
+    },
+  },
   {
     version: '1.2.0',
     date: '2025-08-30',
@@ -180,20 +201,31 @@ export default function ChangelogPage() {
       </header>
       <main className="flex-grow w-full max-w-4xl mx-auto py-8 px-4 md:px-6">
         <div className="space-y-8">
-          <div>
-            <h1 className="text-4xl font-bold tracking-tight">Changelog</h1>
-            <p className="mt-2 text-muted-foreground">
-              All notable changes to this project, based on{' '}
-              <a
-                href="https://keepachangelog.com/en/1.0.0/"
-                target="_blank"
-                rel="noopener noreferrer"
-                className="text-primary underline-offset-4 hover:underline"
-              >
-                Keep a Changelog
-              </a>
-              .
-            </p>
+          <div className="flex flex-col sm:flex-row sm:items-center sm:justify-between gap-4">
+            <div>
+              <h1 className="text-4xl font-bold tracking-tight">Changelog</h1>
+              <p className="mt-2 text-muted-foreground">
+                All notable changes to this project, based on{' '}
+                <a
+                  href="https://keepachangelog.com/en/1.0.0/"
+                  target="_blank"
+                  rel="noopener noreferrer"
+                  className="text-primary underline-offset-4 hover:underline"
+                >
+                  Keep a Changelog
+                </a>
+                .
+              </p>
+            </div>
+            <Link
+              href="/changelog/rss"
+              target="_blank"
+              rel="noopener noreferrer"
+              className="inline-flex items-center gap-2 px-3.5 py-1.5 rounded-full text-xs font-medium border border-border bg-card hover:bg-accent text-foreground transition-colors w-fit shadow-xs group"
+            >
+              <Rss className="w-3.5 h-3.5 text-amber-500 group-hover:scale-110 transition-transform" />
+              <span>Subscribe to this feed</span>
+            </Link>
           </div>
           <div className="space-y-12">
             {changelog.map((entry) => (

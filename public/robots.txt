@@ -1,0 +1,4 @@
+User-agent: *
+Allow: /
+
+Sitemap: https://canvas-crop.netlify.app/sitemap.xml

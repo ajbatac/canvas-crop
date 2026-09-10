@@ -1,0 +1,165 @@
+<?xml version="1.0" encoding="UTF-8"?>
+<rss version="2.0" xmlns:atom="http://www.w3.org/2005/Atom">
+  <channel>
+    <title>Canvas Crop Changelog</title>
+    <link>https://canvas-crop.netlify.app/changelog</link>
+    <description>All notable changes, bug fixes, and feature updates for Canvas Crop.</description>
+    <language>en-us</language>
+    <lastBuildDate>Wed, 09 Sep 2026 00:00:00 GMT</lastBuildDate>
+    <atom:link href="https://canvas-crop.netlify.app/rss.xml" rel="self" type="application/rss+xml"/>
+    <item>
+      <title>Canvas Crop v2.0.0 (2026-09-09)</title>
+      <link>https://canvas-crop.netlify.app/changelog</link>
+      <guid isPermaLink="false">https://canvas-crop.netlify.app/changelog#v2.0.0</guid>
+      <pubDate>Wed, 09 Sep 2026 00:00:00 GMT</pubDate>
+      <description><![CDATA[
+<h4>Added</h4>
+<ul>
+  <li>Interactive Crop Preview modal before saving, enabling you to inspect your exact crop output, select preferred image formats (PNG, JPEG, WebP), adjust compression quality, and copy directly to your clipboard.</li>
+  <li>Extensive aspect ratio presets including Freeform, Square (1:1), Widescreen (16:9), Standard (4:3), Stories/Reels (9:16), 35mm Classic (3:2 &amp; 2:3), Original Image Ratio, and Circular Avatar cutout.</li>
+  <li>Non-destructive orientation controls to rotate images clockwise and counter-clockwise in 90-degree steps, or flip horizontally and vertically.</li>
+  <li>Composition rule-of-thirds alignment grid and softened focus overlay to help frame balanced photos.</li>
+  <li>RSS feed subscription support for receiving instant updates about new features and improvements.</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+  <li>Upgraded the core application framework for significantly faster loading, enhanced security, and smoother responsiveness across desktop and mobile browsers.</li>
+  <li>Refined touch handles and mouse pointer interactions for pixel-perfect cropping accuracy.</li>
+</ul>
+<h4>Fixed</h4>
+<ul>
+  <li>Resolved coordinate and boundary alignment issues when scaling or cropping at high zoom factors.</li>
+  <li>Fixed image aspect ratio consistency when resizing selections on small screens.</li>
+</ul>
+      ]]></description>
+    </item>
+    <item>
+      <title>Canvas Crop v1.2.0 (2025-08-30)</title>
+      <link>https://canvas-crop.netlify.app/changelog</link>
+      <guid isPermaLink="false">https://canvas-crop.netlify.app/changelog#v1.2.0</guid>
+      <pubDate>Sat, 30 Aug 2025 00:00:00 GMT</pubDate>
+      <description><![CDATA[
+<h4>Changed</h4>
+<ul>
+  <li>Improved the UI of the resize handles to have rounded corners and a more prominent hover effect.</li>
+  <li>The image border is now thin and grey by default, becoming thicker and primary-colored on handle hover for a cleaner look.</li>
+</ul>
+<h4>Fixed</h4>
+<ul>
+  <li>Corrected a bug where dragging the top resize handles caused the image to resize in the wrong direction.</li>
+</ul>
+      ]]></description>
+    </item>
+    <item>
+      <title>Canvas Crop v1.1.0 (2025-08-28)</title>
+      <link>https://canvas-crop.netlify.app/changelog</link>
+      <guid isPermaLink="false">https://canvas-crop.netlify.app/changelog#v1.1.0</guid>
+      <pubDate>Thu, 28 Aug 2025 00:00:00 GMT</pubDate>
+      <description><![CDATA[
+<h4>Added</h4>
+<ul>
+  <li>Implemented a dark/light mode theme toggle using next-themes.</li>
+  <li>Added a ThemeProvider and a ThemeToggle button component.</li>
+  <li>Placed the theme toggle in the header of all pages for easy access.</li>
+  <li>Added an "Open Source" link to the main page footer.</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+  <li>Updated the introductory text on the homepage for clarity and conciseness.</li>
+  <li>Updated documentation (README.md, CHANGELOG.md) to reflect the latest changes.</li>
+  <li>Incremented the project version to 1.1.0.</li>
+</ul>
+      ]]></description>
+    </item>
+    <item>
+      <title>Canvas Crop v1.0.3 (2025-08-28)</title>
+      <link>https://canvas-crop.netlify.app/changelog</link>
+      <guid isPermaLink="false">https://canvas-crop.netlify.app/changelog#v1.0.3</guid>
+      <pubDate>Thu, 28 Aug 2025 00:00:00 GMT</pubDate>
+      <description><![CDATA[
+<h4>Changed</h4>
+<ul>
+  <li>Refactored image editor event handling to support both mouse and touch events, fixing mobile Safari compatibility.</li>
+  <li>Corrected image resizing logic to strictly maintain aspect ratio and prevent distortion.</li>
+  <li>Fixed a bug preventing the image from appearing on desktop after mobile fixes were implemented.</li>
+  <li>Corrected the cropping logic to ensure the output image is properly cropped to the canvas boundaries.</li>
+</ul>
+<h4>Fixed</h4>
+<ul>
+  <li>Resolved a console error caused by an incorrect prop name (onValueValueChange) in the Slider component.</li>
+</ul>
+      ]]></description>
+    </item>
+    <item>
+      <title>Canvas Crop v1.0.2 (2025-08-28)</title>
+      <link>https://canvas-crop.netlify.app/changelog</link>
+      <guid isPermaLink="false">https://canvas-crop.netlify.app/changelog#v1.0.2</guid>
+      <pubDate>Thu, 28 Aug 2025 00:00:00 GMT</pubDate>
+      <description><![CDATA[
+<h4>Added</h4>
+<ul>
+  <li>Comprehensive legal pages: Terms of Service, Privacy Policy, DMCA Policy, Cookie Policy, Disclaimer, and UGC Disclaimer.</li>
+  <li>New legal-page component to provide a consistent layout for all legal documents.</li>
+  <li>Added @tailwindcss/typography plugin for improved content formatting on legal pages.</li>
+  <li>Added favicon, apple-touch-icon, and web manifest links to the main layout.</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+  <li>Updated the footer to include a dedicated section with links to all legal pages.</li>
+  <li>Updated project documentation (README.md, CHANGELOG.md) to reflect the latest changes and dependencies.</li>
+  <li>Incremented the version number in the footer and documentation to v1.0.2.</li>
+</ul>
+      ]]></description>
+    </item>
+    <item>
+      <title>Canvas Crop v1.0.1 (2025-08-28)</title>
+      <link>https://canvas-crop.netlify.app/changelog</link>
+      <guid isPermaLink="false">https://canvas-crop.netlify.app/changelog#v1.0.1</guid>
+      <pubDate>Thu, 28 Aug 2025 00:00:00 GMT</pubDate>
+      <description><![CDATA[
+<h4>Added</h4>
+<ul>
+  <li>Created a new changelog page at /changelog to dynamically display project updates.</li>
+  <li>Updated all links to point to the new /changelog route.</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+  <li>Updated documentation (README.md, CHANGELOG.md) to reflect recent changes.</li>
+  <li>Incremented the version number in the footer to v1.0.1.</li>
+</ul>
+<h4>Removed</h4>
+<ul>
+  <li>Deleted the static public/changelog.html file in favor of the new dynamic page.</li>
+</ul>
+      ]]></description>
+    </item>
+    <item>
+      <title>Canvas Crop v1.0.0 (2024-08-01)</title>
+      <link>https://canvas-crop.netlify.app/changelog</link>
+      <guid isPermaLink="false">https://canvas-crop.netlify.app/changelog#v1.0.0</guid>
+      <pubDate>Thu, 01 Aug 2024 00:00:00 GMT</pubDate>
+      <description><![CDATA[
+<h4>Added</h4>
+<ul>
+  <li>Initial release of Canvas Crop.</li>
+  <li>Core functionality: image upload, resize, pan, and zoom.</li>
+  <li>Ability to download the cropped image as a PNG.</li>
+  <li>Ability to copy the cropped image to the clipboard.</li>
+  <li>User interface built with Next.js, ShadCN, and Tailwind CSS.</li>
+  <li>Docker support for both development and production environments.</li>
+  <li>Comprehensive README.md for setup and deployment.</li>
+</ul>
+<h4>Changed</h4>
+<ul>
+  <li>Simplified image resizing logic for better performance and maintainability.</li>
+  <li>Refined cursor behavior to indicate resize and pan actions more clearly.</li>
+</ul>
+<h4>Removed</h4>
+<ul>
+  <li>Removed unused UI components and hooks to streamline the project.</li>
+  <li>Stripped out initial AI and upscaling-related features to focus on a simple, fast resizer.</li>
+</ul>
+      ]]></description>
+    </item>
+  </channel>
+</rss>

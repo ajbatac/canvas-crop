@@ -37,7 +37,14 @@ export function FooterCopyright() {
           >
             AJ Batac (@ajbatac)
           </a>{' '}
-          - v{APP_VERSION} (
+          -{' '}
+          <Link
+            href="/changelog"
+            className="font-medium text-primary underline-offset-4 hover:underline"
+          >
+            v{APP_VERSION}
+          </Link>{' '}
+          (
           <Link
             href="/changelog"
             className="font-medium text-primary underline-offset-4 hover:underline"

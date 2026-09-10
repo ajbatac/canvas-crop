@@ -1,0 +1,30 @@
+# Canvas Crop
+
+> Canvas Crop is a free, 100% private, client-side web application for image cropping, rotating, flipping, and exporting directly in the browser with zero cloud uploads.
+
+- Canonical URL: https://canvas-crop.netlify.app/
+- Source Code: https://github.com/ajbatac/canvas-crop
+- Author: AJ Batac (https://ajbatac.github.io/?=CanvasCrop)
+- Current Version: v2.0.0 (Released: 2026-09-09)
+
+## Core Capabilities
+- In-browser image cropping, rotation, flipping, and zooming via HTML5 Canvas.
+- Aspect ratio presets: Freeform, 1:1 (Square), 16:9 (Widescreen), 4:3 (Standard), 9:16 (Stories/Reels), 3:2 & 2:3 (Classic 35mm), Original, and Circular Avatar cutout.
+- Export formats: PNG (lossless with transparency), JPEG (adjustable compression quality), WebP (modern high-compression).
+- Export actions: Instant download and direct-to-clipboard copy.
+- Privacy guarantee: All image processing executes strictly on the client machine; no files or telemetry are uploaded to external servers.
+
+## Key Endpoints
+- Homepage & Crop Studio: https://canvas-crop.netlify.app/
+- Changelog: https://canvas-crop.netlify.app/changelog
+- RSS Feed: https://canvas-crop.netlify.app/changelog/rss
+- Sitemap: https://canvas-crop.netlify.app/sitemap.xml
+- Robots: https://canvas-crop.netlify.app/robots.txt
+
+## Legal & Policies
+- Terms of Service: https://canvas-crop.netlify.app/legal/terms-of-service
+- Privacy Policy: https://canvas-crop.netlify.app/legal/privacy-policy
+- DMCA Policy: https://canvas-crop.netlify.app/legal/dmca-policy
+- Cookie Policy: https://canvas-crop.netlify.app/legal/cookie-policy
+- Disclaimer: https://canvas-crop.netlify.app/legal/disclaimer
+- UGC Disclaimer: https://canvas-crop.netlify.app/legal/ugc-disclaimer
